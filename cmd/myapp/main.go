@@ -35,6 +35,15 @@ func main() {
 		}
 	})
 
+	http.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			userHandler.GetUser(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	// Запускаем сервер (порт можно взять из cfg.Port, например ":8080")
 	port := cfg.Port
 	if port == "" {

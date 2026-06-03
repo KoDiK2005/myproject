@@ -26,6 +26,10 @@ func (s *UserService) CreateUser(input models.CreateUserInput) (*models.User, er
 	return user, err
 }
 
+func (s *UserService) GetUserByID(id int) (*models.User, error) {
+	return s.repo.GetByID(id)
+}
+
 func (s *UserService) ListUsers() ([]models.User, error) {
 	return s.repo.GetAll()
 }
