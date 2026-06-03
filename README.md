@@ -6,7 +6,8 @@
 
 - Go + net/http
 - PostgreSQL + sqlx
-- Layered architecture: handler → service → repository
+- Layered architecture: handler -> service -> repository
+- Docker + docker-compose
 
 ## Структура
 
@@ -14,27 +15,37 @@
 cmd/myapp/        — точка входа
 internal/
   config/         — конфиг из env
-  handler/        — HTTP-хэндлеры
+  handler/        — HTTP-хендлеры + middleware
   service/        — бизнес-логика
   repository/     — работа с БД
   models/         — структуры данных
 migrations/       — SQL-миграции
 ```
 
-## Запуск
+## Запуск через Docker
 
 ```bash
-export DATABASE_URL="postgres://user:password@localhost:5432/myproject?sslmode=disable"
-export PORT=8080
+docker compose up --build
+```
+
+Миграции применяются автоматически при первом запуске.
+
+## Запуск без Docker
+
+Скопируй `.env.example` в `.env` и заполни своими данными:
+
+```bash
+cp .env.example .env
 go run ./cmd/myapp
 ```
 
 ## Эндпоинты
 
-| Метод | URL     | Описание             |
-|-------|---------|----------------------|
-| POST  | /users  | Создать пользователя |
-| GET   | /users  | Список пользователей |
+| Метод | URL         | Описание             |
+|-------|-------------|----------------------|
+| POST  | /users      | Создать пользователя |
+| GET   | /users      | Список пользователей |
+| GET   | /users/{id} | Получить по ID       |
 
 ### POST /users
 
@@ -44,10 +55,4 @@ go run ./cmd/myapp
 
 // ответ 201
 { "id": 1, "name": "Mark", "email": "mark@example.com" }
-```
-
-## Миграции
-
-```bash
-psql $DATABASE_URL -f migrations/001_create_users_table.sql
 ```
