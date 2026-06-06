@@ -6,7 +6,8 @@ import (
 	"myproject/internal/handler"
 	"myproject/internal/repository"
 	"myproject/internal/service"
-	"net/http"
+
+	"github.com/gin-gonic/gin"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -24,25 +25,14 @@ func main() {
 	userSvc := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userSvc)
 
-	http.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			userHandler.ListUsers(w, r)
-		case http.MethodPost:
-			userHandler.CreateUser(w, r)
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
+	r := gin.Default()
 
-	http.HandleFunc("/users/", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			userHandler.GetUser(w, r)
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		}
-	})
+	api := r.Group("/api/v1")
+	{
+		api.GET("/users", userHandler.ListUsers)
+		api.POST("/users", userHandler.CreateUser)
+		api.GET("/users/:id", userHandler.GetUser)
+	}
 
 	// Запускаем сервер (порт можно взять из cfg.Port, например ":8080")
 	port := cfg.Port
@@ -50,7 +40,5 @@ func main() {
 		port = "8080"
 	}
 	log.Printf("Server starting on port %s", port)
-	if err := http.ListenAndServe(":"+port, handler.LoggingMiddleware(http.DefaultServeMux)); err != nil {
-		log.Fatal(err)
-	}
+	r.Run(":" + port)
 }
