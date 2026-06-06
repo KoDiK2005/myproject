@@ -30,3 +30,8 @@ func (r *UserRepo) GetAll() ([]models.User, error) {
 	err := r.db.Select(&users, "SELECT id, name, email FROM users")
 	return users, err
 }
+
+func (r *UserRepo) Delete(id int) error {
+	_, err := r.db.Exec("DELETE FROM users WHERE id = $1", id)
+	return err
+}

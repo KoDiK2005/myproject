@@ -33,3 +33,7 @@ func (s *UserService) GetUserByID(id int) (*models.User, error) {
 func (s *UserService) ListUsers() ([]models.User, error) {
 	return s.repo.GetAll()
 }
+
+func (s *UserService) DeleteUser(id int) error {
+	return s.repo.Delete(id)
+}

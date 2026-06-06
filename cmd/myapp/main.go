@@ -32,6 +32,7 @@ func main() {
 		api.GET("/users", userHandler.ListUsers)
 		api.POST("/users", userHandler.CreateUser)
 		api.GET("/users/:id", userHandler.GetUser)
+		api.DELETE("/users/:id", userHandler.DeleteUser)
 	}
 
 	// Запускаем сервер (порт можно взять из cfg.Port, например ":8080")

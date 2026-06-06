@@ -54,3 +54,18 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 	c.JSON(201, user)
 }
+
+func (h *UserHandler) DeleteUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if err := h.svc.DeleteUser(id); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(204)
+}
