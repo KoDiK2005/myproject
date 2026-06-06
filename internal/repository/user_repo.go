@@ -15,8 +15,8 @@ func NewUserRepo(db *sqlx.DB) *UserRepo {
 }
 
 func (r *UserRepo) Create(user *models.User) error {
-	query := "INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id"
-	return r.db.QueryRowx(query, user.Name, user.Email).Scan(&user.ID)
+	query := "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id"
+	return r.db.QueryRowx(query, user.Name, user.Email, user.PasswordHash).Scan(&user.ID)
 }
 
 func (r *UserRepo) GetByID(id int) (*models.User, error) {
@@ -40,5 +40,11 @@ func (r *UserRepo) Update(id int, name, email string) (*models.User, error) {
 	var user models.User
 	query := "UPDATE users SET name=$1, email=$2 WHERE id=$3 RETURNING id, name, email"
 	err := r.db.QueryRowx(query, name, email, id).Scan(&user.ID, &user.Name, &user.Email)
+	return &user, err
+}
+
+func (r *UserRepo) GetByEmail(email string) (*models.User, error) {
+	var user models.User
+	err := r.db.Get(&user, "SELECT id, name, email, password_hash FROM users WHERE email = $1", email)
 	return &user, err
 }

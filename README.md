@@ -39,21 +39,46 @@ cp .env.example .env
 go run ./cmd/myapp
 ```
 
+## Авторизация
+
+PUT и DELETE защищены JWT. Сначала получи токен:
+
+```
+POST /auth/login → { "token": "..." }
+```
+
+Затем передавай в заголовке:
+
+```
+Authorization: Bearer <token>
+```
+
 ## Эндпоинты
 
-| Метод  | URL                | Описание              |
-|--------|--------------------|-----------------------|
-| POST   | /api/v1/users      | Создать пользователя  |
-| GET    | /api/v1/users      | Список пользователей  |
-| GET    | /api/v1/users/{id} | Получить по ID        |
-| PUT    | /api/v1/users/{id} | Обновить пользователя |
-| DELETE | /api/v1/users/{id} | Удалить пользователя  |
+| Метод  | URL                | Авторизация | Описание              |
+|--------|--------------------|-------------|-----------------------|
+| POST   | /auth/login        | —           | Получить JWT токен    |
+| POST   | /api/v1/users      | —           | Создать пользователя  |
+| GET    | /api/v1/users      | —           | Список пользователей  |
+| GET    | /api/v1/users/{id} | —           | Получить по ID        |
+| PUT    | /api/v1/users/{id} | JWT         | Обновить пользователя |
+| DELETE | /api/v1/users/{id} | JWT         | Удалить пользователя  |
+
+### POST /auth/login
+
+```json
+// запрос
+{ "email": "mark@example.com", "password": "secret123" }
+
+// ответ 200
+{ "token": "eyJhbGci..." }
+```
 
 ### POST /api/v1/users
 
 ```json
 // запрос
-{ "name": "Mark", "email": "mark@example.com" }
+{ "name": "Mark", "email": "mark@example.com", "password": "secret123" }
 
 // ответ 201
 { "id": 1, "name": "Mark", "email": "mark@example.com" }

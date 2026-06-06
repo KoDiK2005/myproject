@@ -1,8 +1,11 @@
 package service
 
 import (
+	"errors"
 	"myproject/internal/models"
 	"myproject/internal/repository"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -15,11 +18,18 @@ func NewUserService(repo *repository.UserRepo) *UserService {
 
 func (s *UserService) CreateUser(input models.CreateUserInput) (*models.User, error) {
 
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
 	user := &models.User{
 		Name:  input.Name,
 		Email: input.Email,
 	}
-	err := s.repo.Create(user)
+	user.PasswordHash = string(hash)
+
+	err = s.repo.Create(user)
 	return user, err
 }
 
@@ -37,4 +47,16 @@ func (s *UserService) DeleteUser(id int) error {
 
 func (s *UserService) UpdateUser(id int, input models.CreateUserInput) (*models.User, error) {
 	return s.repo.Update(id, input.Name, input.Email)
+}
+
+func (s *UserService) Login(input models.LoginInput) (*models.User, error) {
+	user, err := s.repo.GetByEmail(input.Email)
+	if err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
+	if err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+	return user, nil
 }

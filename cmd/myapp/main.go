@@ -24,16 +24,22 @@ func main() {
 	userRepo := repository.NewUserRepo(db)
 	userSvc := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userSvc)
+	authHandler := handler.NewAuthHandler(userSvc, cfg.JWTSecret)
 
 	r := gin.Default()
+	r.POST("/auth/login", authHandler.Login)
 
 	api := r.Group("/api/v1")
 	{
 		api.GET("/users", userHandler.ListUsers)
 		api.POST("/users", userHandler.CreateUser)
 		api.GET("/users/:id", userHandler.GetUser)
-		api.DELETE("/users/:id", userHandler.DeleteUser)
-		api.PUT("/users/:id", userHandler.UpdateUser)
+	}
+	protected := api.Group("")
+	protected.Use(handler.AuthMiddleware(cfg.JWTSecret))
+	{
+		protected.PUT("/users/:id", userHandler.UpdateUser)
+		protected.DELETE("/users/:id", userHandler.DeleteUser)
 	}
 
 	// Запускаем сервер (порт можно взять из cfg.Port, например ":8080")
