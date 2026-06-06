@@ -4,7 +4,7 @@
 
 ## Стек
 
-- Go + net/http
+- Go + Gin
 - PostgreSQL + sqlx
 - Layered architecture: handler -> service -> repository
 - Docker + docker-compose
@@ -43,11 +43,11 @@ go run ./cmd/myapp
 
 | Метод | URL         | Описание             |
 |-------|-------------|----------------------|
-| POST  | /users      | Создать пользователя |
-| GET   | /users      | Список пользователей |
-| GET   | /users/{id} | Получить по ID       |
+| POST  | /api/v1/users      | Создать пользователя |
+| GET   | /api/v1/users      | Список пользователей |
+| GET   | /api/v1/users/{id} | Получить по ID       |
 
-### POST /users
+### POST /api/v1/users
 
 ```json
 // запрос
