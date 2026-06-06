@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"myproject/internal/models"
 	"myproject/internal/repository"
 )
@@ -15,9 +14,7 @@ func NewUserService(repo *repository.UserRepo) *UserService {
 }
 
 func (s *UserService) CreateUser(input models.CreateUserInput) (*models.User, error) {
-	if input.Name == "" {
-		return nil, errors.New("name is required")
-	}
+
 	user := &models.User{
 		Name:  input.Name,
 		Email: input.Email,

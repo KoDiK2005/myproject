@@ -41,11 +41,13 @@ go run ./cmd/myapp
 
 ## Эндпоинты
 
-| Метод | URL         | Описание             |
-|-------|-------------|----------------------|
-| POST  | /api/v1/users      | Создать пользователя |
-| GET   | /api/v1/users      | Список пользователей |
-| GET   | /api/v1/users/{id} | Получить по ID       |
+| Метод  | URL                | Описание              |
+|--------|--------------------|-----------------------|
+| POST   | /api/v1/users      | Создать пользователя  |
+| GET    | /api/v1/users      | Список пользователей  |
+| GET    | /api/v1/users/{id} | Получить по ID        |
+| PUT    | /api/v1/users/{id} | Обновить пользователя |
+| DELETE | /api/v1/users/{id} | Удалить пользователя  |
 
 ### POST /api/v1/users
 
@@ -55,4 +57,14 @@ go run ./cmd/myapp
 
 // ответ 201
 { "id": 1, "name": "Mark", "email": "mark@example.com" }
+```
+
+### PUT /api/v1/users/{id}
+
+```json
+// запрос
+{ "name": "Mark Updated", "email": "mark2@example.com" }
+
+// ответ 200
+{ "id": 1, "name": "Mark Updated", "email": "mark2@example.com" }
 ```
