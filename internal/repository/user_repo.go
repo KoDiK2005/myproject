@@ -35,3 +35,10 @@ func (r *UserRepo) Delete(id int) error {
 	_, err := r.db.Exec("DELETE FROM users WHERE id = $1", id)
 	return err
 }
+
+func (r *UserRepo) Update(id int, name, email string) (*models.User, error) {
+	var user models.User
+	query := "UPDATE users SET name=$1, email=$2 WHERE id=$3 RETURNING id, name, email"
+	err := r.db.QueryRowx(query, name, email, id).Scan(&user.ID, &user.Name, &user.Email)
+	return &user, err
+}

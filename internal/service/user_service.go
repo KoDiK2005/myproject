@@ -37,3 +37,7 @@ func (s *UserService) ListUsers() ([]models.User, error) {
 func (s *UserService) DeleteUser(id int) error {
 	return s.repo.Delete(id)
 }
+
+func (s *UserService) UpdateUser(id int, input models.CreateUserInput) (*models.User, error) {
+	return s.repo.Update(id, input.Name, input.Email)
+}

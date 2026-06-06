@@ -69,3 +69,23 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 	c.Status(204)
 }
+
+func (h *UserHandler) UpdateUser(c *gin.Context) {
+	var input models.CreateUserInput
+	id, err := strconv.Atoi(c.Param("id"))
+
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid id"})
+		return
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	user, err := h.svc.UpdateUser(id, input)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, user)
+}
