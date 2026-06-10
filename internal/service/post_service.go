@@ -13,11 +13,11 @@ func NewPostService(repo *repository.PostRepo) *PostService {
 	return &PostService{repo: repo}
 }
 
-func (s *PostService) CreatePost(input models.CreatePostInput) (*models.Post, error) {
+func (s *PostService) CreatePost(input models.CreatePostInput, userID int) (*models.Post, error) {
 	post := &models.Post{
 		Title:  input.Title,
 		Body:   input.Body,
-		UserID: input.UserID,
+		UserID: userID,
 	}
 	err := s.repo.Create(post)
 	return post, err

@@ -45,7 +45,10 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	post, err := h.svc.CreatePost(input)
+
+	userID := c.GetInt("user_id")
+
+	post, err := h.svc.CreatePost(input, userID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

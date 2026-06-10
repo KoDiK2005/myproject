@@ -8,7 +8,6 @@ type Post struct {
 }
 
 type CreatePostInput struct {
-	Title  string `json:"title" binding:"required"`
-	Body   string `json:"body"  binding:"required"`
-	UserID int    `json:"user_id" binding:"required"`
+	Title string `json:"title" binding:"required"`
+	Body  string `json:"body"  binding:"required"`
 }
