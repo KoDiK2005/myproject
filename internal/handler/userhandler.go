@@ -17,7 +17,22 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 }
 
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	users, err := h.svc.ListUsers()
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		c.JSON(400, gin.H{"error": "invalid page"})
+		return
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		c.JSON(400, gin.H{"error": "invalid limit"})
+		return
+	}
+
+	users, err := h.svc.ListUsers(page, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Internal Server Error"})
 		return

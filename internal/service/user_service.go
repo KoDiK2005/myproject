@@ -37,10 +37,10 @@ func (s *UserService) GetUserByID(id int) (*models.User, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *UserService) ListUsers() ([]models.User, error) {
-	return s.repo.GetAll()
+func (s *UserService) ListUsers(page, limit int) ([]models.User, error) {
+	offset := (page - 1) * limit
+	return s.repo.GetAll(limit, offset)
 }
-
 func (s *UserService) DeleteUser(id int) error {
 	return s.repo.Delete(id)
 }

@@ -25,9 +25,9 @@ func (r *UserRepo) GetByID(id int) (*models.User, error) {
 	return &user, err
 }
 
-func (r *UserRepo) GetAll() ([]models.User, error) {
+func (r *UserRepo) GetAll(limit, offset int) ([]models.User, error) {
 	var users []models.User
-	err := r.db.Select(&users, "SELECT id, name, email FROM users")
+	err := r.db.Select(&users, "SELECT id, name, email FROM users LIMIT $1 OFFSET $2", limit, offset)
 	return users, err
 }
 
