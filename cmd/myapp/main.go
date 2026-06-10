@@ -26,6 +26,10 @@ func main() {
 	userHandler := handler.NewUserHandler(userSvc)
 	authHandler := handler.NewAuthHandler(userSvc, cfg.JWTSecret)
 
+	postRepo := repository.NewPostRepo(db)
+	postSvc := service.NewPostService(postRepo)
+	postHandler := handler.NewPostHandler(postSvc)
+
 	r := gin.Default()
 	r.POST("/auth/login", authHandler.Login)
 
@@ -34,12 +38,18 @@ func main() {
 		api.GET("/users", userHandler.ListUsers)
 		api.POST("/users", userHandler.CreateUser)
 		api.GET("/users/:id", userHandler.GetUser)
+
+		api.GET("/posts", postHandler.ListPosts)
+		api.GET("/posts/:id", postHandler.GetPost)
 	}
 	protected := api.Group("")
 	protected.Use(handler.AuthMiddleware(cfg.JWTSecret))
 	{
 		protected.PUT("/users/:id", userHandler.UpdateUser)
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
+
+		protected.POST("/posts", postHandler.CreatePost)
+		protected.DELETE("/posts/:id", postHandler.DeletePost)
 	}
 
 	// Запускаем сервер (порт можно взять из cfg.Port, например ":8080")

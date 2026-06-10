@@ -1,0 +1,36 @@
+package service
+
+import (
+	"myproject/internal/models"
+	"myproject/internal/repository"
+)
+
+type PostService struct {
+	repo *repository.PostRepo
+}
+
+func NewPostService(repo *repository.PostRepo) *PostService {
+	return &PostService{repo: repo}
+}
+
+func (s *PostService) CreatePost(input models.CreatePostInput) (*models.Post, error) {
+	post := &models.Post{
+		Title:  input.Title,
+		Body:   input.Body,
+		UserID: input.UserID,
+	}
+	err := s.repo.Create(post)
+	return post, err
+}
+
+func (s *PostService) GetPostByID(id int) (*models.Post, error) {
+	return s.repo.GetByID(id)
+}
+
+func (s *PostService) ListPosts() ([]models.Post, error) {
+	return s.repo.GetAll()
+}
+
+func (s *PostService) DeletePost(id int) error {
+	return s.repo.Delete(id)
+}

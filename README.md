@@ -63,6 +63,10 @@ Authorization: Bearer <token>
 | GET    | /api/v1/users/{id} | —           | Получить по ID        |
 | PUT    | /api/v1/users/{id} | JWT         | Обновить пользователя |
 | DELETE | /api/v1/users/{id} | JWT         | Удалить пользователя  |
+| GET    | /api/v1/posts      | —           | Список постов         |
+| GET    | /api/v1/posts/{id} | —           | Получить пост по ID   |
+| POST   | /api/v1/posts      | JWT         | Создать пост          |
+| DELETE | /api/v1/posts/{id} | JWT         | Удалить пост          |
 
 ### POST /auth/login
 
