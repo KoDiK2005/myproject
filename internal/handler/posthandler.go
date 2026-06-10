@@ -17,7 +17,22 @@ func NewPostHandler(svc *service.PostService) *PostHandler {
 }
 
 func (h *PostHandler) ListPosts(c *gin.Context) {
-	posts, err := h.svc.ListPosts()
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		c.JSON(400, gin.H{"error": "invalid page"})
+		return
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		c.JSON(400, gin.H{"error": "invalid limit"})
+		return
+	}
+
+	posts, err := h.svc.ListPosts(page, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Internal Server Error"})
 		return

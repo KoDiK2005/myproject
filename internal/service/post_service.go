@@ -27,8 +27,9 @@ func (s *PostService) GetPostByID(id int) (*models.Post, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *PostService) ListPosts() ([]models.Post, error) {
-	return s.repo.GetAll()
+func (s *PostService) ListPosts(page, limit int) ([]models.Post, error) {
+	offset := (page - 1) * limit
+	return s.repo.GetAll(limit, offset)
 }
 
 func (s *PostService) DeletePost(id int) error {

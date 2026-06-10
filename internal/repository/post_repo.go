@@ -25,9 +25,9 @@ func (r *PostRepo) GetByID(id int) (*models.Post, error) {
 	return &post, err
 }
 
-func (r *PostRepo) GetAll() ([]models.Post, error) {
+func (r *PostRepo) GetAll(limit, offset int) ([]models.Post, error) {
 	var posts []models.Post
-	err := r.db.Select(&posts, "SELECT id, title, body, user_id FROM posts")
+	err := r.db.Select(&posts, "SELECT id, title, body, user_id FROM posts LIMIT $1 OFFSET $2", limit, offset)
 	return posts, err
 }
 
