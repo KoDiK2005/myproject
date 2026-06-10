@@ -31,7 +31,10 @@ func (s *PostService) ListPosts(page, limit int) ([]models.Post, error) {
 	offset := (page - 1) * limit
 	return s.repo.GetAll(limit, offset)
 }
-
+func (s *PostService) GetPostsByUserID(userID, page, limit int) ([]models.Post, error) {
+	offset := (page - 1) * limit
+	return s.repo.GetByUserID(userID, limit, offset)
+}
 func (s *PostService) DeletePost(id int) error {
 	return s.repo.Delete(id)
 }

@@ -25,6 +25,12 @@ func (r *PostRepo) GetByID(id int) (*models.Post, error) {
 	return &post, err
 }
 
+func (r *PostRepo) GetByUserID(userID, limit, offset int) ([]models.Post, error) {
+	var posts []models.Post
+	err := r.db.Select(&posts, "SELECT id, title, body, user_id FROM posts WHERE user_id = $1 LIMIT $2 OFFSET $3", userID, limit, offset)
+	return posts, err
+}
+
 func (r *PostRepo) GetAll(limit, offset int) ([]models.Post, error) {
 	var posts []models.Post
 	err := r.db.Select(&posts, "SELECT id, title, body, user_id FROM posts LIMIT $1 OFFSET $2", limit, offset)

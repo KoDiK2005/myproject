@@ -38,6 +38,7 @@ func main() {
 		api.GET("/users", userHandler.ListUsers)
 		api.POST("/users", userHandler.CreateUser)
 		api.GET("/users/:id", userHandler.GetUser)
+		api.GET("/users/:id/posts", postHandler.GetPostsByUser)
 
 		api.GET("/posts", postHandler.ListPosts)
 		api.GET("/posts/:id", postHandler.GetPost)

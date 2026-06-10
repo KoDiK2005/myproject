@@ -40,6 +40,36 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 	c.JSON(200, posts)
 }
 
+func (h *PostHandler) GetPostsByUser(c *gin.Context) {
+	userID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid user id"})
+		return
+	}
+
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		c.JSON(400, gin.H{"error": "invalid page"})
+		return
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 100 {
+		c.JSON(400, gin.H{"error": "invalid limit"})
+		return
+	}
+
+	posts, err := h.svc.GetPostsByUserID(userID, page, limit)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Internal Server Error"})
+		return
+	}
+	c.JSON(200, posts)
+}
+
 func (h *PostHandler) GetPost(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
