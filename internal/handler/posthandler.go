@@ -77,7 +77,7 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 		return
 	}
 	post, err := h.svc.GetPostByID(id)
-	if err != nil {
+	if err != nil || post == nil {
 		c.JSON(404, gin.H{"error": "post not found"})
 		return
 	}

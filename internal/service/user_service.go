@@ -3,16 +3,24 @@ package service
 import (
 	"errors"
 	"myproject/internal/models"
-	"myproject/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserService struct {
-	repo *repository.UserRepo
+type UserRepository interface {
+	Create(user *models.User) error
+	GetByID(id int) (*models.User, error)
+	GetAll(limit, offset int) ([]models.User, error)
+	Delete(id int) error
+	Update(id int, name, email string) (*models.User, error)
+	GetByEmail(email string) (*models.User, error)
 }
 
-func NewUserService(repo *repository.UserRepo) *UserService {
+type UserService struct {
+	repo UserRepository
+}
+
+func NewUserService(repo UserRepository) *UserService {
 	return &UserService{repo: repo}
 }
 
