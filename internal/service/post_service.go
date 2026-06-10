@@ -2,14 +2,21 @@ package service
 
 import (
 	"myproject/internal/models"
-	"myproject/internal/repository"
 )
 
-type PostService struct {
-	repo *repository.PostRepo
+type PostRepository interface {
+	Create(post *models.Post) error
+	GetByID(id int) (*models.Post, error)
+	GetAll(limit, offset int) ([]models.Post, error)
+	GetByUserID(userID, limit, offset int) ([]models.Post, error)
+	Delete(id int) error
 }
 
-func NewPostService(repo *repository.PostRepo) *PostService {
+type PostService struct {
+	repo PostRepository
+}
+
+func NewPostService(repo PostRepository) *PostService {
 	return &PostService{repo: repo}
 }
 
