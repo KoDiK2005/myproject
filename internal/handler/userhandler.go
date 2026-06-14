@@ -39,7 +39,6 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	}
 	c.JSON(200, users)
 }
-
 func (h *UserHandler) GetUser(c *gin.Context) {
 	// URL: /users/42 — берём последний сегмент пути
 	id, err := strconv.Atoi(c.Param("id"))
@@ -77,6 +76,11 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
+	if id != c.GetInt("user_id") {
+		c.JSON(403, gin.H{"error": "you can't delete someone else's account"})
+		return
+	}
+
 	if err := h.svc.DeleteUser(id); err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -86,13 +90,19 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 }
 
 func (h *UserHandler) UpdateUser(c *gin.Context) {
-	var input models.CreateUserInput
+	var input models.UpdateUserInput
 	id, err := strconv.Atoi(c.Param("id"))
 
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid id"})
 		return
 	}
+
+	if id != c.GetInt("user_id") {
+		c.JSON(403, gin.H{"error": "you can't update someone else's account"})
+		return
+	}
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return

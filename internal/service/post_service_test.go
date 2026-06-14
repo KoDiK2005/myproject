@@ -40,6 +40,12 @@ func (m *mockPostRepo) GetByUserID(userID, limit, offset int) ([]models.Post, er
 }
 
 func (m *mockPostRepo) Delete(id int) error {
+	for i, p := range m.posts {
+		if p.ID == id {
+			m.posts = append(m.posts[:i], m.posts[i+1:]...)
+			return nil
+		}
+	}
 	return nil
 }
 
@@ -59,6 +65,26 @@ func TestCreatePost(t *testing.T) {
 	}
 	if post.UserID != 1 {
 		t.Errorf("ожидали user_id=1, получили %d", post.UserID)
+	}
+}
+
+func TestDeletePost_Ownership(t *testing.T) {
+	repo := &mockPostRepo{}
+	svc := NewPostService(repo)
+
+	// создаём пост для юзера 1
+	post, _ := svc.CreatePost(models.CreatePostInput{Title: "my post", Body: "body"}, 1)
+
+	// юзер 2 пытается удалить — должен получить forbidden
+	err := svc.DeletePost(post.ID, 2)
+	if err == nil || err.Error() != "forbidden" {
+		t.Errorf("ожидали 'forbidden', получили: %v", err)
+	}
+
+	// юзер 1 удаляет свой же пост — всё ок
+	err = svc.DeletePost(post.ID, 1)
+	if err != nil {
+		t.Errorf("не ожидали ошибку: %v", err)
 	}
 }
 

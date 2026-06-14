@@ -12,7 +12,7 @@ type UserRepository interface {
 	GetByID(id int) (*models.User, error)
 	GetAll(limit, offset int) ([]models.User, error)
 	Delete(id int) error
-	Update(id int, name, email string) (*models.User, error)
+	Update(id int, name, email string) (*models.User, error) // имя и мейл — не весь юзер
 	GetByEmail(email string) (*models.User, error)
 }
 
@@ -53,7 +53,7 @@ func (s *UserService) DeleteUser(id int) error {
 	return s.repo.Delete(id)
 }
 
-func (s *UserService) UpdateUser(id int, input models.CreateUserInput) (*models.User, error) {
+func (s *UserService) UpdateUser(id int, input models.UpdateUserInput) (*models.User, error) {
 	return s.repo.Update(id, input.Name, input.Email)
 }
 

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"myproject/internal/models"
 )
 
@@ -42,6 +43,14 @@ func (s *PostService) GetPostsByUserID(userID, page, limit int) ([]models.Post, 
 	offset := (page - 1) * limit
 	return s.repo.GetByUserID(userID, limit, offset)
 }
-func (s *PostService) DeletePost(id int) error {
+func (s *PostService) DeletePost(id, userID int) error {
+	post, err := s.repo.GetByID(id)
+	if err != nil || post == nil {
+		return errors.New("post not found")
+	}
+	if post.UserID != userID {
+		// чужой пост — нечего тут делать
+		return errors.New("forbidden")
+	}
 	return s.repo.Delete(id)
 }

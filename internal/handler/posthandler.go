@@ -107,8 +107,16 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 		c.JSON(400, gin.H{"error": "invalid id"})
 		return
 	}
-	if err := h.svc.DeletePost(id); err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+	userID := c.GetInt("user_id")
+	if err := h.svc.DeletePost(id, userID); err != nil {
+		switch err.Error() {
+		case "post not found":
+			c.JSON(404, gin.H{"error": "post not found"})
+		case "forbidden":
+			c.JSON(403, gin.H{"error": "you can't delete someone else's post"})
+		default:
+			c.JSON(500, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.Status(204)
