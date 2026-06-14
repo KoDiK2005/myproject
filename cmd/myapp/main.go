@@ -50,6 +50,7 @@ func main() {
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
 
 		protected.POST("/posts", postHandler.CreatePost)
+		protected.PUT("/posts/:id", postHandler.UpdatePost)
 		protected.DELETE("/posts/:id", postHandler.DeletePost)
 	}
 

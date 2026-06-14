@@ -39,6 +39,17 @@ func (m *mockPostRepo) GetByUserID(userID, limit, offset int) ([]models.Post, er
 	return result, nil
 }
 
+func (m *mockPostRepo) Update(id int, title, body string) (*models.Post, error) {
+	for i, p := range m.posts {
+		if p.ID == id {
+			m.posts[i].Title = title
+			m.posts[i].Body = body
+			return &m.posts[i], nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *mockPostRepo) Delete(id int) error {
 	for i, p := range m.posts {
 		if p.ID == id {
@@ -65,6 +76,28 @@ func TestCreatePost(t *testing.T) {
 	}
 	if post.UserID != 1 {
 		t.Errorf("ожидали user_id=1, получили %d", post.UserID)
+	}
+}
+
+func TestUpdatePost_Ownership(t *testing.T) {
+	repo := &mockPostRepo{}
+	svc := NewPostService(repo)
+
+	post, _ := svc.CreatePost(models.CreatePostInput{Title: "old title", Body: "old body"}, 1)
+
+	// чужой юзер — forbidden
+	_, err := svc.UpdatePost(post.ID, 2, models.UpdatePostInput{Title: "hack", Body: "hacked"})
+	if err == nil || err.Error() != "forbidden" {
+		t.Errorf("ожидали 'forbidden', получили: %v", err)
+	}
+
+	// владелец — обновляет нормально
+	updated, err := svc.UpdatePost(post.ID, 1, models.UpdatePostInput{Title: "new title", Body: "new body"})
+	if err != nil {
+		t.Errorf("не ожидали ошибку: %v", err)
+	}
+	if updated.Title != "new title" {
+		t.Errorf("ожидали 'new title', получили '%s'", updated.Title)
 	}
 }
 

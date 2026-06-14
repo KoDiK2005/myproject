@@ -67,7 +67,8 @@ Authorization: Bearer <token>
 | GET    | /api/v1/posts             | —           | Список постов                   |
 | GET    | /api/v1/posts/{id}        | —           | Получить пост по ID             |
 | POST   | /api/v1/posts             | JWT         | Создать пост                    |
-| DELETE | /api/v1/posts/{id}        | JWT         | Удалить пост                    |
+| PUT    | /api/v1/posts/{id}        | JWT         | Обновить пост (только автор)    |
+| DELETE | /api/v1/posts/{id}        | JWT         | Удалить пост (только автор)     |
 
 ### Пагинация
 
@@ -104,6 +105,8 @@ GET /api/v1/posts?page=2&limit=10
 
 ### PUT /api/v1/users/{id}
 
+Только свой аккаунт. Чужой — 403.
+
 ```json
 // запрос
 { "name": "Mark Updated", "email": "mark2@example.com" }
@@ -111,3 +114,20 @@ GET /api/v1/posts?page=2&limit=10
 // ответ 200
 { "id": 1, "name": "Mark Updated", "email": "mark2@example.com" }
 ```
+
+### PUT /api/v1/posts/{id}
+
+Только автор поста. Чужой — 403.
+
+```json
+// запрос
+{ "title": "Новый заголовок", "body": "Новое тело поста" }
+
+// ответ 200
+{ "id": 1, "title": "Новый заголовок", "body": "Новое тело поста", "user_id": 1 }
+```
+
+## Правила доступа
+
+- `PUT /users/{id}` и `DELETE /users/{id}` — только свой аккаунт
+- `PUT /posts/{id}` и `DELETE /posts/{id}` — только автор поста

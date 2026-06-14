@@ -10,6 +10,7 @@ type PostRepository interface {
 	GetByID(id int) (*models.Post, error)
 	GetAll(limit, offset int) ([]models.Post, error)
 	GetByUserID(userID, limit, offset int) ([]models.Post, error)
+	Update(id int, title, body string) (*models.Post, error)
 	Delete(id int) error
 }
 
@@ -43,6 +44,17 @@ func (s *PostService) GetPostsByUserID(userID, page, limit int) ([]models.Post, 
 	offset := (page - 1) * limit
 	return s.repo.GetByUserID(userID, limit, offset)
 }
+func (s *PostService) UpdatePost(id, userID int, input models.UpdatePostInput) (*models.Post, error) {
+	post, err := s.repo.GetByID(id)
+	if err != nil || post == nil {
+		return nil, errors.New("post not found")
+	}
+	if post.UserID != userID {
+		return nil, errors.New("forbidden")
+	}
+	return s.repo.Update(id, input.Title, input.Body)
+}
+
 func (s *PostService) DeletePost(id, userID int) error {
 	post, err := s.repo.GetByID(id)
 	if err != nil || post == nil {

@@ -37,6 +37,13 @@ func (r *PostRepo) GetAll(limit, offset int) ([]models.Post, error) {
 	return posts, err
 }
 
+func (r *PostRepo) Update(id int, title, body string) (*models.Post, error) {
+	var post models.Post
+	query := "UPDATE posts SET title=$1, body=$2 WHERE id=$3 RETURNING id, title, body, user_id"
+	err := r.db.QueryRowx(query, title, body, id).Scan(&post.ID, &post.Title, &post.Body, &post.UserID)
+	return &post, err
+}
+
 func (r *PostRepo) Delete(id int) error {
 	_, err := r.db.Exec("DELETE FROM posts WHERE id = $1", id)
 	return err

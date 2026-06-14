@@ -11,3 +11,8 @@ type CreatePostInput struct {
 	Title string `json:"title" binding:"required"`
 	Body  string `json:"body"  binding:"required"`
 }
+
+type UpdatePostInput struct {
+	Title string `json:"title" binding:"required"`
+	Body  string `json:"body"  binding:"required"`
+}

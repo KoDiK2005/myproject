@@ -101,6 +101,33 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	c.JSON(201, post)
 }
 
+func (h *PostHandler) UpdatePost(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid id"})
+		return
+	}
+	var input models.UpdatePostInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	userID := c.GetInt("user_id")
+	post, err := h.svc.UpdatePost(id, userID, input)
+	if err != nil {
+		switch err.Error() {
+		case "post not found":
+			c.JSON(404, gin.H{"error": "post not found"})
+		case "forbidden":
+			c.JSON(403, gin.H{"error": "you can't edit someone else's post"})
+		default:
+			c.JSON(500, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.JSON(200, post)
+}
+
 func (h *PostHandler) DeletePost(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
