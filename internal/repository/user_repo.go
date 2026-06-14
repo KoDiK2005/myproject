@@ -43,6 +43,12 @@ func (r *UserRepo) Update(id int, name, email string) (*models.User, error) {
 	return &user, err
 }
 
+func (r *UserRepo) Count() (int, error) {
+	var count int
+	err := r.db.QueryRowx("SELECT COUNT(*) FROM users").Scan(&count)
+	return count, err
+}
+
 func (r *UserRepo) GetByEmail(email string) (*models.User, error) {
 	var user models.User
 	err := r.db.Get(&user, "SELECT id, name, email, password_hash FROM users WHERE email = $1", email)

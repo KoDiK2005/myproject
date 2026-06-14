@@ -11,6 +11,7 @@ type UserRepository interface {
 	Create(user *models.User) error
 	GetByID(id int) (*models.User, error)
 	GetAll(limit, offset int) ([]models.User, error)
+	Count() (int, error)
 	Delete(id int) error
 	Update(id int, name, email string) (*models.User, error) // имя и мейл — не весь юзер
 	GetByEmail(email string) (*models.User, error)
@@ -45,9 +46,17 @@ func (s *UserService) GetUserByID(id int) (*models.User, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *UserService) ListUsers(page, limit int) ([]models.User, error) {
+func (s *UserService) ListUsers(page, limit int) (*models.PaginatedResponse, error) {
 	offset := (page - 1) * limit
-	return s.repo.GetAll(limit, offset)
+	users, err := s.repo.GetAll(limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	total, err := s.repo.Count()
+	if err != nil {
+		return nil, err
+	}
+	return &models.PaginatedResponse{Data: users, Total: total, Page: page, Limit: limit}, nil
 }
 func (s *UserService) DeleteUser(id int) error {
 	return s.repo.Delete(id)

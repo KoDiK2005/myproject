@@ -32,12 +32,12 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	users, err := h.svc.ListUsers(page, limit)
+	resp, err := h.svc.ListUsers(page, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Internal Server Error"})
 		return
 	}
-	c.JSON(200, users)
+	c.JSON(200, resp)
 }
 func (h *UserHandler) GetUser(c *gin.Context) {
 	// URL: /users/42 — берём последний сегмент пути

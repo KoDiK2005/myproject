@@ -29,6 +29,10 @@ func (m *mockUserRepo) GetAll(limit, offset int) ([]models.User, error) {
 	return m.users, nil
 }
 
+func (m *mockUserRepo) Count() (int, error) {
+	return len(m.users), nil
+}
+
 func (m *mockUserRepo) Delete(id int) error {
 	return nil
 }
@@ -78,11 +82,15 @@ func TestListUsers(t *testing.T) {
 	svc.CreateUser(models.CreateUserInput{Name: "Mark", Email: "mark@example.com", Password: "123"})
 	svc.CreateUser(models.CreateUserInput{Name: "Anna", Email: "anna@example.com", Password: "123"})
 
-	users, err := svc.ListUsers(1, 10)
+	resp, err := svc.ListUsers(1, 10)
 	if err != nil {
 		t.Fatalf("не ожидали ошибку: %v", err)
 	}
+	users := resp.Data.([]models.User)
 	if len(users) != 2 {
 		t.Errorf("ожидали 2 юзера, получили %d", len(users))
+	}
+	if resp.Total != 2 {
+		t.Errorf("ожидали total=2, получили %d", resp.Total)
 	}
 }

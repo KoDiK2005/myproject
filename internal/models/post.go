@@ -8,11 +8,11 @@ type Post struct {
 }
 
 type CreatePostInput struct {
-	Title string `json:"title" binding:"required"`
-	Body  string `json:"body"  binding:"required"`
+	Title string `json:"title" binding:"required,min=3,max=200"`
+	Body  string `json:"body"  binding:"required,min=10,max=10000"`
 }
 
 type UpdatePostInput struct {
-	Title string `json:"title" binding:"required"`
-	Body  string `json:"body"  binding:"required"`
+	Title string `json:"title" binding:"required,min=3,max=200"`
+	Body  string `json:"body"  binding:"required,min=10,max=10000"`
 }

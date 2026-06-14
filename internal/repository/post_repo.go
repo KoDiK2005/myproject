@@ -44,6 +44,12 @@ func (r *PostRepo) Update(id int, title, body string) (*models.Post, error) {
 	return &post, err
 }
 
+func (r *PostRepo) Count() (int, error) {
+	var count int
+	err := r.db.QueryRowx("SELECT COUNT(*) FROM posts").Scan(&count)
+	return count, err
+}
+
 func (r *PostRepo) Delete(id int) error {
 	_, err := r.db.Exec("DELETE FROM posts WHERE id = $1", id)
 	return err

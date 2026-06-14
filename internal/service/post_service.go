@@ -11,6 +11,7 @@ type PostRepository interface {
 	GetAll(limit, offset int) ([]models.Post, error)
 	GetByUserID(userID, limit, offset int) ([]models.Post, error)
 	Update(id int, title, body string) (*models.Post, error)
+	Count() (int, error)
 	Delete(id int) error
 }
 
@@ -36,13 +37,28 @@ func (s *PostService) GetPostByID(id int) (*models.Post, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *PostService) ListPosts(page, limit int) ([]models.Post, error) {
+func (s *PostService) ListPosts(page, limit int) (*models.PaginatedResponse, error) {
 	offset := (page - 1) * limit
-	return s.repo.GetAll(limit, offset)
+	posts, err := s.repo.GetAll(limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	total, err := s.repo.Count()
+	if err != nil {
+		return nil, err
+	}
+	return &models.PaginatedResponse{Data: posts, Total: total, Page: page, Limit: limit}, nil
 }
-func (s *PostService) GetPostsByUserID(userID, page, limit int) ([]models.Post, error) {
+
+func (s *PostService) GetPostsByUserID(userID, page, limit int) (*models.PaginatedResponse, error) {
 	offset := (page - 1) * limit
-	return s.repo.GetByUserID(userID, limit, offset)
+	posts, err := s.repo.GetByUserID(userID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	// считаем только посты этого юзера
+	total := len(posts)
+	return &models.PaginatedResponse{Data: posts, Total: total, Page: page, Limit: limit}, nil
 }
 func (s *PostService) UpdatePost(id, userID int, input models.UpdatePostInput) (*models.Post, error) {
 	post, err := s.repo.GetByID(id)

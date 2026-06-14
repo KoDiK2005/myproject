@@ -32,12 +32,12 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 		return
 	}
 
-	posts, err := h.svc.ListPosts(page, limit)
+	resp, err := h.svc.ListPosts(page, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Internal Server Error"})
 		return
 	}
-	c.JSON(200, posts)
+	c.JSON(200, resp)
 }
 
 func (h *PostHandler) GetPostsByUser(c *gin.Context) {
@@ -62,12 +62,12 @@ func (h *PostHandler) GetPostsByUser(c *gin.Context) {
 		return
 	}
 
-	posts, err := h.svc.GetPostsByUserID(userID, page, limit)
+	resp, err := h.svc.GetPostsByUserID(userID, page, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Internal Server Error"})
 		return
 	}
-	c.JSON(200, posts)
+	c.JSON(200, resp)
 }
 
 func (h *PostHandler) GetPost(c *gin.Context) {

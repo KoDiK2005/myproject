@@ -29,6 +29,10 @@ func (m *mockPostRepo) GetAll(limit, offset int) ([]models.Post, error) {
 	return m.posts, nil
 }
 
+func (m *mockPostRepo) Count() (int, error) {
+	return len(m.posts), nil
+}
+
 func (m *mockPostRepo) GetByUserID(userID, limit, offset int) ([]models.Post, error) {
 	var result []models.Post
 	for _, p := range m.posts {
@@ -131,11 +135,12 @@ func TestGetPostsByUserID(t *testing.T) {
 	svc.CreatePost(models.CreatePostInput{Title: "post3", Body: "body3"}, 2)
 
 	// получи посты юзера 1
-	posts, err := svc.GetPostsByUserID(1, 1, 10)
+	resp, err := svc.GetPostsByUserID(1, 1, 10)
 
 	if err != nil {
 		t.Fatalf("не ожидали ошибку: %v", err)
 	}
+	posts := resp.Data.([]models.Post)
 	if len(posts) != 2 {
 		t.Errorf("ожидали 2 поста, получили %d", len(posts))
 	}
