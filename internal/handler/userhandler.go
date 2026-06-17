@@ -228,4 +228,36 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	// проверяем реальный MIME по magic bytes — расширение можно подделать
 	f, err := file.Open()
 	if err != nil {
-		c.JSON(500, gin.H{"error": "failed to 
+		c.JSON(500, gin.H{"error": "failed to read file"})
+		return
+	}
+	defer f.Close()
+
+	buf := make([]byte, 512)
+	if _, err := io.ReadFull(f, buf); err != nil && err != io.ErrUnexpectedEOF {
+		c.JSON(500, gin.H{"error": "failed to read file"})
+		return
+	}
+	mime := http.DetectContentType(buf)
+	if mime != "image/jpeg" && mime != "image/png" {
+		c.JSON(400, gin.H{"error": "file content must be image/jpeg or image/png"})
+		return
+	}
+
+	// имя файла — user_id + расширение, перезаписываем при повторной загрузке
+	filename := fmt.Sprintf("%d%s", id, ext)
+	dst := filepath.Join(h.uploadPath, filename)
+
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.JSON(500, gin.H{"error": "failed to save file"})
+		return
+	}
+
+	avatarURL := "/uploads/avatars/" + filename
+	if err := h.svc.UpdateAvatar(id, avatarURL); err != nil {
+		c.JSON(500, gin.H{"error": "failed to update avatar"})
+		return
+	}
+
+	c.JSON(200, gin.H{"avatar": avatarURL})
+}

@@ -53,4 +53,24 @@ func (l *ipLimiter) get(ip string) *rate.Limiter {
 
 	e, exists := l.entries[ip]
 	if !exists {
-		e = &entry{limiter: rate.NewLimiter(l.r, 
+		e = &entry{limiter: rate.NewLimiter(l.r, l.b)}
+		l.entries[ip] = e
+	}
+	e.lastSeen = time.Now()
+	return e.limiter
+}
+
+// 10 запросов в секунду, burst 20
+var limiter = newIPLimiter(10, 20)
+
+func RateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		if !limiter.get(ip).Allow() {
+			logger.Log.Warn().Str("ip", ip).Msg("rate limit exceeded")
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many requests"})
+			return
+		}
+		c.Next()
+	}
+}

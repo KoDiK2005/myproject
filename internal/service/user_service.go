@@ -86,3 +86,17 @@ func (s *UserService) UpdateUser(id int, input models.UpdateUserInput) (*models.
 }
 
 func (s *UserService) UpdateAvatar(id int, path string) error {
+	return s.repo.UpdateAvatar(id, path)
+}
+
+func (s *UserService) Login(input models.LoginInput) (*models.User, error) {
+	user, err := s.repo.GetByEmail(input.Email)
+	if err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
+	if err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+	return user, nil
+}

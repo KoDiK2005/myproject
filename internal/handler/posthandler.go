@@ -213,4 +213,8 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 			c.JSON(403, gin.H{"error": "you can't delete someone else's post"})
 		default:
 			c.JSON(500, gin.H{"error": err.Error()})
-	
+		}
+		return
+	}
+	c.Status(204)
+}

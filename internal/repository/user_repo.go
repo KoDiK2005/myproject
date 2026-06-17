@@ -65,4 +65,8 @@ func (r *UserRepo) UpdateAvatar(id int, path string) error {
 	return err
 }
 
-func (r *UserR
+func (r *UserRepo) GetByEmail(email string) (*models.User, error) {
+	var user models.User
+	err := r.db.Get(&user, "SELECT id, name, email, password_hash FROM users WHERE email = $1", email)
+	return &user, err
+}
