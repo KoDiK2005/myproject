@@ -8,6 +8,8 @@
 - PostgreSQL + sqlx
 - Layered architecture: handler -> service -> repository
 - Docker + docker-compose
+- zerolog — структурированное логирование
+- golang.org/x/time/rate — rate limiting по IP
 
 ## Структура
 
@@ -131,3 +133,16 @@ GET /api/v1/posts?page=2&limit=10
 
 - `PUT /users/{id}` и `DELETE /users/{id}` — только свой аккаунт
 - `PUT /posts/{id}` и `DELETE /posts/{id}` — только автор поста
+
+## Rate limiting
+
+10 запросов/сек с burst до 20 на каждый IP. При превышении — `429 Too Many Requests`.
+
+## Логирование
+
+Структурированные логи через zerolog. Каждый запрос логируется с методом, путём, статусом и latency:
+
+```
+INF request method=GET path=/api/v1/posts status=200 latency=2ms
+WRN rate limit exceeded ip=1.2.3.4
+```

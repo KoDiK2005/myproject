@@ -35,6 +35,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode) // убираем дефолтный дебаг-вывод Gin
 	r := gin.New()
 	r.Use(handler.LoggerMiddleware())
+	r.Use(handler.RateLimitMiddleware())
 	r.Use(gin.Recovery())
 	r.POST("/auth/login", authHandler.Login)
 
