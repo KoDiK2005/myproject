@@ -9,12 +9,19 @@
 package main
 
 import (
+	"context"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	_ "myproject/docs" // сгенерированная документация
 	"myproject/internal/config"
 	"myproject/internal/handler"
 	"myproject/internal/logger"
 	"myproject/internal/repository"
 	"myproject/internal/service"
-	_ "myproject/docs" // сгенерированная документация
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -49,6 +56,7 @@ func main() {
 	r.Use(handler.RateLimitMiddleware())
 	r.Use(gin.Recovery())
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 	r.POST("/auth/login", authHandler.Login)
 
 	api := r.Group("/api/v1")
@@ -72,11 +80,38 @@ func main() {
 		protected.DELETE("/posts/:id", postHandler.DeletePost)
 	}
 
-	// Запускаем сервер (порт можно взять из cfg.Port, например ":8080")
 	port := cfg.Port
 	if port == "" {
 		port = "8080"
 	}
-	logger.Log.Info().Str("port", port).Msg("server starting")
-	r.Run(":" + port)
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: r,
+	}
+
+	// запускаем сервер в горутине чтобы не блокировать
+	go func() {
+		logger.Log.Info().Str("port", port).Msg("server starting")
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Log.Fatal().Err(err).Msg("server error")
+		}
+	}()
+
+	// ждём сигнала завершения (Ctrl+C или docker stop)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	logger.Log.Info().Msg("shutting down server...")
+
+	// даём 5 секунд на завершение текущих запросов
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Log.Fatal().Err(err).Msg("forced shutdown")
+	}
+
+	logger.Log.Info().Msg("server stopped")
 }
