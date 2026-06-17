@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
 	"myproject/internal/config"
 	"myproject/internal/handler"
+	"myproject/internal/logger"
 	"myproject/internal/repository"
 	"myproject/internal/service"
 
@@ -14,10 +14,12 @@ import (
 )
 
 func main() {
+	logger.Init()
+
 	cfg := config.Load()
 	db, err := sqlx.Connect("postgres", cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal().Err(err).Msg("failed to connect to database")
 	}
 	defer db.Close()
 
@@ -30,7 +32,10 @@ func main() {
 	postSvc := service.NewPostService(postRepo)
 	postHandler := handler.NewPostHandler(postSvc)
 
-	r := gin.Default()
+	gin.SetMode(gin.ReleaseMode) // убираем дефолтный дебаг-вывод Gin
+	r := gin.New()
+	r.Use(handler.LoggerMiddleware())
+	r.Use(gin.Recovery())
 	r.POST("/auth/login", authHandler.Login)
 
 	api := r.Group("/api/v1")
@@ -59,6 +64,6 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("Server starting on port %s", port)
+	logger.Log.Info().Str("port", port).Msg("server starting")
 	r.Run(":" + port)
 }
