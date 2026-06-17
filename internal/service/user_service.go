@@ -1,9 +1,11 @@
 package service
 
 import (
+	"database/sql"
 	"errors"
 	"myproject/internal/models"
 
+	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -40,7 +42,15 @@ func (s *UserService) CreateUser(input models.CreateUserInput) (*models.User, er
 	user.PasswordHash = string(hash)
 
 	err = s.repo.Create(user)
-	return user, err
+	if err != nil {
+		// postgres unique violation — email уже занят
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return nil, ErrEmailTaken
+		}
+		return nil, err
+	}
+	return user, nil
 }
 
 func (s *UserService) GetUserByID(id int) (*models.User, error) {
@@ -60,25 +70,19 @@ func (s *UserService) ListUsers(page, limit int) (*models.PaginatedResponse, err
 	return &models.PaginatedResponse{Data: users, Total: total, Page: page, Limit: limit}, nil
 }
 func (s *UserService) DeleteUser(id int) error {
-	return s.repo.Delete(id)
+	err := s.repo.Delete(id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
+	return err
 }
 
 func (s *UserService) UpdateUser(id int, input models.UpdateUserInput) (*models.User, error) {
-	return s.repo.Update(id, input.Name, input.Email)
+	user, err := s.repo.Update(id, input.Name, input.Email)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return user, err
 }
 
 func (s *UserService) UpdateAvatar(id int, path string) error {
-	return s.repo.UpdateAvatar(id, path)
-}
-
-func (s *UserService) Login(input models.LoginInput) (*models.User, error) {
-	user, err := s.repo.GetByEmail(input.Email)
-	if err != nil {
-		return nil, errors.New("invalid credentials")
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
-	if err != nil {
-		return nil, errors.New("invalid credentials")
-	}
-	return user, nil
-}

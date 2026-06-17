@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"myproject/internal/models"
 	"myproject/internal/service"
+	"net/http"
 	"path/filepath"
 	"strconv"
 
@@ -93,7 +96,11 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	}
 	user, err := h.svc.CreateUser(input)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		if errors.Is(err, service.ErrEmailTaken) {
+			c.JSON(409, gin.H{"error": "email already taken"})
+		} else {
+			c.JSON(500, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(201, user)
@@ -122,7 +129,11 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	}
 
 	if err := h.svc.DeleteUser(id); err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(404, gin.H{"error": "user not found"})
+		} else {
+			c.JSON(500, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
@@ -162,7 +173,11 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	}
 	user, err := h.svc.UpdateUser(id, input)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(404, gin.H{"error": "user not found"})
+		} else {
+			c.JSON(500, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(200, user)
@@ -210,20 +225,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	// имя файла — user_id + расширение, перезаписываем при повторной загрузке
-	filename := fmt.Sprintf("%d%s", id, ext)
-	dst := filepath.Join(h.uploadPath, filename)
-
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		c.JSON(500, gin.H{"error": "failed to save file"})
-		return
-	}
-
-	avatarURL := "/uploads/avatars/" + filename
-	if err := h.svc.UpdateAvatar(id, avatarURL); err != nil {
-		c.JSON(500, gin.H{"error": "failed to update avatar"})
-		return
-	}
-
-	c.JSON(200, gin.H{"avatar": avatarURL})
-}
+	// проверяем реальный MIME по magic bytes — расширение можно подделать
+	f, err := file.Open()
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to 
