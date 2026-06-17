@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type User struct {
 	ID           int    `db:"id" json:"id"`
 	Name         string `db:"name" json:"name"`
@@ -28,4 +30,12 @@ type PaginatedResponse struct {
 	Page  int `json:"page"`
 	Total int `json:"total"`
 	Limit int `json:"limit"`
+}
+
+type RefreshToken struct {
+	ID        int       `db:"id"`
+	UserID    int       `db:"user_id"`
+	Token     string    `db:"token"`
+	ExpiresAt time.Time `db:"expires_at"`
+	Revoked   bool      `db:"revoked"`
 }

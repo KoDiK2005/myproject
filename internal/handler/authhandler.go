@@ -9,13 +9,73 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type AuthHandler struct {
-	svc    *service.UserService
-	secret string
+type refreshInput struct {
+	Token string `json:"refresh_token" binding:"required"`
 }
 
-func NewAuthHandler(svc *service.UserService, secret string) *AuthHandler {
-	return &AuthHandler{svc: svc, secret: secret}
+type AuthHandler struct {
+	svc        *service.UserService
+	refreshSvc *service.RefreshTokenService
+	secret     string
+}
+
+func NewAuthHandler(svc *service.UserService, refreshSvc *service.RefreshTokenService, secret string) *AuthHandler {
+	return &AuthHandler{svc: svc, refreshSvc: refreshSvc, secret: secret}
+}
+
+// Refresh godoc
+// @Summary      Обновить access token
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body refreshInput true "Refresh token"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Router       /auth/refresh [post]
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	var input refreshInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	rt, err := h.refreshSvc.ValidateToken(input.Token)
+	if err != nil {
+		c.JSON(401, gin.H{"error": err.Error()})
+		return
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": rt.UserID,
+		"exp":     time.Now().Add(15 * time.Minute).Unix(),
+	})
+	accessTokenStr, err := accessToken.SignedString([]byte(h.secret))
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to generate token"})
+		return
+	}
+
+	c.JSON(200, gin.H{"access_token": accessTokenStr})
+}
+
+// Logout godoc
+// @Summary      Выйти (отозвать refresh token)
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body refreshInput true "Refresh token"
+// @Success      204
+// @Failure      400 {object} map[string]string
+// @Router       /auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	var input refreshInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	h.refreshSvc.RevokeToken(input.Token)
+	c.Status(204)
 }
 
 // Login godoc
@@ -41,17 +101,26 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+		"exp":     time.Now().Add(15 * time.Minute).Unix(),
 	})
 
-	tokenStr, err := token.SignedString([]byte(h.secret))
+	accessTokenStr, err := accessToken.SignedString([]byte(h.secret))
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to generate token"})
 		return
 	}
 
-	c.JSON(200, gin.H{"token": tokenStr})
+	refreshToken, err := h.refreshSvc.GenerateToken(user.ID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to generate refresh token"})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"access_token":  accessTokenStr,
+		"refresh_token": refreshToken.Token,
+	})
 
 }

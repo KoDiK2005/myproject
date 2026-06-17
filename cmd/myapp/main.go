@@ -45,7 +45,10 @@ func main() {
 	userRepo := repository.NewUserRepo(db)
 	userSvc := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userSvc)
-	authHandler := handler.NewAuthHandler(userSvc, cfg.JWTSecret)
+
+	refreshTokenRepo := repository.NewRefreshTokenRepo(db)
+	refreshTokenSvc := service.NewRefreshTokenService(refreshTokenRepo)
+	authHandler := handler.NewAuthHandler(userSvc, refreshTokenSvc, cfg.JWTSecret)
 
 	postRepo := repository.NewPostRepo(db)
 	postSvc := service.NewPostService(postRepo)
@@ -67,6 +70,8 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
 	r.POST("/auth/login", authHandler.Login)
+	r.POST("/auth/refresh", authHandler.Refresh)
+	r.POST("/auth/logout", authHandler.Logout)
 
 	api := r.Group("/api/v1")
 	{
