@@ -1,0 +1,106 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f0f11;
+  color: #e8e8e8;
+  min-height: 100vh;
+}
+
+/* ---- Auth pages ---- */
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-box {
+  background: #1a1a1f;
+  border: 1px solid #2e2e38;
+  border-radius: 12px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.auth-box h1 {
+  margin-bottom: 1.5rem;
+  font-size: 1.6rem;
+  color: #fff;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 1rem;
+}
+
+.field label {
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.field input {
+  background: #0f0f11;
+  border: 1px solid #2e2e38;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  color: #e8e8e8;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus {
+  border-color: #7c3aed;
+}
+
+button[type='submit'] {
+  width: 100%;
+  padding: 0.7rem;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.2s;
+}
+
+button[type='submit']:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #f87171;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.auth-link {
+  margin-top: 1.2rem;
+  font-size: 0.875rem;
+  color: #aaa;
+  text-align: center;
+}
+
+.auth-link a {
+  color: #a78bfa;
+  text-decoration: none;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
+}
