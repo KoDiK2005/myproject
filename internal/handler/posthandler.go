@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"myproject/internal/models"
 	"myproject/internal/service"
 	"strconv"
@@ -115,10 +116,10 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	post, err := h.svc.UpdatePost(id, userID, input)
 	if err != nil {
-		switch err.Error() {
-		case "post not found":
+		switch {
+		case errors.Is(err, service.ErrNotFound):
 			c.JSON(404, gin.H{"error": "post not found"})
-		case "forbidden":
+		case errors.Is(err, service.ErrForbidden):
 			c.JSON(403, gin.H{"error": "you can't edit someone else's post"})
 		default:
 			c.JSON(500, gin.H{"error": err.Error()})

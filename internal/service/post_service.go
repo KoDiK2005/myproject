@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"myproject/internal/models"
 )
 
@@ -63,10 +62,10 @@ func (s *PostService) GetPostsByUserID(userID, page, limit int) (*models.Paginat
 func (s *PostService) UpdatePost(id, userID int, input models.UpdatePostInput) (*models.Post, error) {
 	post, err := s.repo.GetByID(id)
 	if err != nil || post == nil {
-		return nil, errors.New("post not found")
+		return nil, ErrNotFound
 	}
 	if post.UserID != userID {
-		return nil, errors.New("forbidden")
+		return nil, ErrForbidden
 	}
 	return s.repo.Update(id, input.Title, input.Body)
 }
@@ -74,11 +73,11 @@ func (s *PostService) UpdatePost(id, userID int, input models.UpdatePostInput) (
 func (s *PostService) DeletePost(id, userID int) error {
 	post, err := s.repo.GetByID(id)
 	if err != nil || post == nil {
-		return errors.New("post not found")
+		return ErrNotFound
 	}
 	if post.UserID != userID {
 		// чужой пост — нечего тут делать
-		return errors.New("forbidden")
+		return ErrForbidden
 	}
 	return s.repo.Delete(id)
 }

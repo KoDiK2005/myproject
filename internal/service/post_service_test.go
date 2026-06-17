@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"myproject/internal/models"
 	"testing"
 )
@@ -91,8 +92,8 @@ func TestUpdatePost_Ownership(t *testing.T) {
 
 	// чужой юзер — forbidden
 	_, err := svc.UpdatePost(post.ID, 2, models.UpdatePostInput{Title: "hack", Body: "hacked"})
-	if err == nil || err.Error() != "forbidden" {
-		t.Errorf("ожидали 'forbidden', получили: %v", err)
+	if !errors.Is(err, ErrForbidden) {
+		t.Errorf("ожидали ErrForbidden, получили: %v", err)
 	}
 
 	// владелец — обновляет нормально
@@ -114,8 +115,8 @@ func TestDeletePost_Ownership(t *testing.T) {
 
 	// юзер 2 пытается удалить — должен получить forbidden
 	err := svc.DeletePost(post.ID, 2)
-	if err == nil || err.Error() != "forbidden" {
-		t.Errorf("ожидали 'forbidden', получили: %v", err)
+	if !errors.Is(err, ErrForbidden) {
+		t.Errorf("ожидали ErrForbidden, получили: %v", err)
 	}
 
 	// юзер 1 удаляет свой же пост — всё ок
