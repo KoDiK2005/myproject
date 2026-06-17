@@ -1,3 +1,11 @@
+// @title           myproject API
+// @version         1.0
+// @description     Учебный REST API на Go + Gin + PostgreSQL
+// @host            localhost:8080
+// @BasePath        /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 package main
 
 import (
@@ -6,8 +14,11 @@ import (
 	"myproject/internal/logger"
 	"myproject/internal/repository"
 	"myproject/internal/service"
+	_ "myproject/docs" // сгенерированная документация
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -37,6 +48,7 @@ func main() {
 	r.Use(handler.LoggerMiddleware())
 	r.Use(handler.RateLimitMiddleware())
 	r.Use(gin.Recovery())
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.POST("/auth/login", authHandler.Login)
 
 	api := r.Group("/api/v1")

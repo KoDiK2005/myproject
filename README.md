@@ -134,6 +134,24 @@ GET /api/v1/posts?page=2&limit=10
 - `PUT /users/{id}` и `DELETE /users/{id}` — только свой аккаунт
 - `PUT /posts/{id}` и `DELETE /posts/{id}` — только автор поста
 
+## Swagger UI
+
+Документация API доступна после запуска по адресу:
+
+```
+http://localhost:8080/swagger/index.html
+```
+
+Можно авторизоваться через JWT и тыкать все эндпоинты прямо в браузере.
+
+После изменений в аннотациях — перегенерировать:
+
+```bash
+swag init -g cmd/myapp/main.go
+```
+
+---
+
 ## Rate limiting
 
 10 запросов/сек с burst до 20 на каждый IP. При превышении — `429 Too Many Requests`.

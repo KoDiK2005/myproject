@@ -18,6 +18,16 @@ func NewAuthHandler(svc *service.UserService, secret string) *AuthHandler {
 	return &AuthHandler{svc: svc, secret: secret}
 }
 
+// Login godoc
+// @Summary      Получить JWT токен
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        input body models.LoginInput true "Email и пароль"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Router       /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var input models.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
