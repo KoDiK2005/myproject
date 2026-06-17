@@ -7,9 +7,9 @@ on:
     branches: [ master ]
 
 jobs:
+  # Юнит-тесты — без БД, быстро
   test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -21,5 +21,44 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Test
+      - name: Unit tests
         run: go test ./...
+
+  # Интеграционные тесты — с реальным PostgreSQL
+  integration:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U testuser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Apply migrations
+        run: |
+          export PGPASSWORD=testpass
+          for f in migrations/*.sql; do
+            psql -h localhost -U testuser -d testdb -f "$f"
+          done
+
+      - name: Integration tests
+        env:
+          DATABASE_URL: postgres://testuser:testpass@localhost:5432/testdb?sslmode=disable
+        run: go test -tags integration ./internal/repository/... -v

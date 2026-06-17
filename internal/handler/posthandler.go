@@ -18,11 +18,12 @@ func NewPostHandler(svc *service.PostService) *PostHandler {
 }
 
 // ListPosts godoc
-// @Summary      Список постов
+// @Summary      Список постов (с опциональным поиском)
 // @Tags         posts
 // @Produce      json
-// @Param        page  query int false "Страница" default(1)
-// @Param        limit query int false "Лимит"    default(10)
+// @Param        page   query int    false "Страница" default(1)
+// @Param        limit  query int    false "Лимит"    default(10)
+// @Param        search query string false "Поиск по title/body"
 // @Success      200 {object} models.PaginatedResponse
 // @Failure      500 {object} map[string]string
 // @Router       /posts [get]
@@ -42,7 +43,14 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.svc.ListPosts(page, limit)
+	search := c.Query("search")
+
+	var resp *models.PaginatedResponse
+	if search != "" {
+		resp, err = h.svc.SearchPosts(search, page, limit)
+	} else {
+		resp, err = h.svc.ListPosts(page, limit)
+	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Internal Server Error"})
 		return

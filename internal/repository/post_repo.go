@@ -50,6 +50,27 @@ func (r *PostRepo) Count() (int, error) {
 	return count, err
 }
 
+// Search ищет посты по подстроке в title или body (ILIKE — регистр не важен)
+func (r *PostRepo) Search(query string, limit, offset int) ([]models.Post, error) {
+	var posts []models.Post
+	like := "%" + query + "%"
+	err := r.db.Select(&posts,
+		`SELECT id, title, body, user_id FROM posts
+		 WHERE title ILIKE $1 OR body ILIKE $1
+		 LIMIT $2 OFFSET $3`,
+		like, limit, offset)
+	return posts, err
+}
+
+func (r *PostRepo) SearchCount(query string) (int, error) {
+	var count int
+	like := "%" + query + "%"
+	err := r.db.QueryRowx(
+		`SELECT COUNT(*) FROM posts WHERE title ILIKE $1 OR body ILIKE $1`, like,
+	).Scan(&count)
+	return count, err
+}
+
 func (r *PostRepo) Delete(id int) error {
 	_, err := r.db.Exec("DELETE FROM posts WHERE id = $1", id)
 	return err

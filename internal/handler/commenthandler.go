@@ -1,0 +1,102 @@
+package handler
+
+import (
+	"errors"
+	"myproject/internal/models"
+	"myproject/internal/service"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+)
+
+type CommentHandler struct {
+	svc *service.CommentService
+}
+
+func NewCommentHandler(svc *service.CommentService) *CommentHandler {
+	return &CommentHandler{svc: svc}
+}
+
+// ListComments godoc
+// @Summary      Список комментариев к посту
+// @Tags         comments
+// @Produce      json
+// @Param        id path int true "ID поста"
+// @Success      200 {array}  models.Comment
+// @Failure      400 {object} map[string]string
+// @Router       /posts/{id}/comments [get]
+func (h *CommentHandler) ListComments(c *gin.Context) {
+	postID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid post id"})
+		return
+	}
+	comments, err := h.svc.ListComments(postID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, comments)
+}
+
+// CreateComment godoc
+// @Summary      Добавить комментарий
+// @Tags         comments
+// @Accept       json
+// @Produce      json
+// @Param        id    path int                       true "ID поста"
+// @Param        input body models.CreateCommentInput true "Текст комментария"
+// @Success      201 {object} models.Comment
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /posts/{id}/comments [post]
+func (h *CommentHandler) CreateComment(c *gin.Context) {
+	postID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid post id"})
+		return
+	}
+	var input models.CreateCommentInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	userID := c.GetInt("user_id")
+	comment, err := h.svc.AddComment(postID, userID, input)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(201, comment)
+}
+
+// DeleteComment godoc
+// @Summary      Удалить комментарий
+// @Tags         comments
+// @Produce      json
+// @Param        id path int true "ID комментария"
+// @Success      204
+// @Failure      403 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /comments/{id} [delete]
+func (h *CommentHandler) DeleteComment(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid id"})
+		return
+	}
+	userID := c.GetInt("user_id")
+	if err := h.svc.DeleteComment(id, userID); err != nil {
+		switch {
+		case errors.Is(err, service.ErrNotFound):
+			c.JSON(404, gin.H{"error": "comment not found"})
+		case errors.Is(err, service.ErrForbidden):
+			c.JSON(403, gin.H{"error": "not your comment"})
+		default:
+			c.JSON(500, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.Status(204)
+}

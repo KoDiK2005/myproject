@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	_ "myproject/docs" // сгенерированная документация
+	_ "myproject/docs"
 	"myproject/internal/config"
 	"myproject/internal/handler"
 	"myproject/internal/logger"
@@ -25,6 +25,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -43,20 +44,27 @@ func main() {
 	defer db.Close()
 
 	userRepo := repository.NewUserRepo(db)
-	userSvc := service.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userSvc)
-
-	refreshTokenRepo := repository.NewRefreshTokenRepo(db)
-	refreshTokenSvc := service.NewRefreshTokenService(refreshTokenRepo)
-	authHandler := handler.NewAuthHandler(userSvc, refreshTokenSvc, cfg.JWTSecret)
-
 	postRepo := repository.NewPostRepo(db)
-	postSvc := service.NewPostService(postRepo)
-	postHandler := handler.NewPostHandler(postSvc)
+	refreshTokenRepo := repository.NewRefreshTokenRepo(db)
+	commentRepo := repository.NewCommentRepo(db)
+	likeRepo := repository.NewLikeRepo(db)
 
-	gin.SetMode(gin.ReleaseMode) // убираем дефолтный дебаг-вывод Gin
+	userSvc := service.NewUserService(userRepo)
+	postSvc := service.NewPostService(postRepo)
+	refreshTokenSvc := service.NewRefreshTokenService(refreshTokenRepo)
+	commentSvc := service.NewCommentService(commentRepo)
+	likeSvc := service.NewLikeService(likeRepo)
+
+	userHandler := handler.NewUserHandler(userSvc)
+	postHandler := handler.NewPostHandler(postSvc)
+	authHandler := handler.NewAuthHandler(userSvc, refreshTokenSvc, cfg.JWTSecret)
+	commentHandler := handler.NewCommentHandler(commentSvc)
+	likeHandler := handler.NewLikeHandler(likeSvc)
+
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(handler.LoggerMiddleware())
+	r.Use(handler.PrometheusMiddleware())
 	r.Use(handler.RateLimitMiddleware())
 	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
@@ -67,8 +75,12 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+
+	r.Static("/uploads", "./uploads")
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 	r.POST("/auth/login", authHandler.Login)
 	r.POST("/auth/refresh", authHandler.Refresh)
 	r.POST("/auth/logout", authHandler.Logout)
@@ -82,16 +94,26 @@ func main() {
 
 		api.GET("/posts", postHandler.ListPosts)
 		api.GET("/posts/:id", postHandler.GetPost)
+		api.GET("/posts/:id/comments", commentHandler.ListComments)
+		api.GET("/posts/:id/likes", likeHandler.GetLikeCount)
 	}
+
 	protected := api.Group("")
 	protected.Use(handler.AuthMiddleware(cfg.JWTSecret))
 	{
 		protected.PUT("/users/:id", userHandler.UpdateUser)
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
+		protected.POST("/users/:id/avatar", userHandler.UploadAvatar)
 
 		protected.POST("/posts", postHandler.CreatePost)
 		protected.PUT("/posts/:id", postHandler.UpdatePost)
 		protected.DELETE("/posts/:id", postHandler.DeletePost)
+
+		protected.POST("/posts/:id/comments", commentHandler.CreateComment)
+		protected.DELETE("/comments/:id", commentHandler.DeleteComment)
+
+		protected.POST("/posts/:id/like", likeHandler.LikePost)
+		protected.DELETE("/posts/:id/like", likeHandler.UnlikePost)
 	}
 
 	port := cfg.Port
@@ -104,7 +126,6 @@ func main() {
 		Handler: r,
 	}
 
-	// запускаем сервер в горутине чтобы не блокировать
 	go func() {
 		logger.Log.Info().Str("port", port).Msg("server starting")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -112,14 +133,12 @@ func main() {
 		}
 	}()
 
-	// ждём сигнала завершения (Ctrl+C или docker stop)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	logger.Log.Info().Msg("shutting down server...")
 
-	// даём 5 секунд на завершение текущих запросов
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

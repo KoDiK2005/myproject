@@ -49,6 +49,11 @@ func (r *UserRepo) Count() (int, error) {
 	return count, err
 }
 
+func (r *UserRepo) UpdateAvatar(id int, path string) error {
+	_, err := r.db.Exec("UPDATE users SET avatar = $1 WHERE id = $2", path, id)
+	return err
+}
+
 func (r *UserRepo) GetByEmail(email string) (*models.User, error) {
 	var user models.User
 	err := r.db.Get(&user, "SELECT id, name, email, password_hash FROM users WHERE email = $1", email)

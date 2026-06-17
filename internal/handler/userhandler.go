@@ -1,19 +1,22 @@
 package handler
 
 import (
+	"fmt"
 	"myproject/internal/models"
 	"myproject/internal/service"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 type UserHandler struct {
-	svc *service.UserService
+	svc        *service.UserService
+	uploadPath string // папка для аватаров, например "./uploads/avatars"
 }
 
 func NewUserHandler(svc *service.UserService) *UserHandler {
-	return &UserHandler{svc: svc}
+	return &UserHandler{svc: svc, uploadPath: "./uploads/avatars"}
 }
 
 // ListUsers godoc
@@ -163,4 +166,64 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 	c.JSON(200, user)
+}
+
+// UploadAvatar godoc
+// @Summary      Загрузить аватар пользователя
+// @Tags         users
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id     path int  true "ID пользователя"
+// @Param        avatar formData file true "Файл аватара (jpg/png, макс 2MB)"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} map[string]string
+// @Failure      403 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /users/{id}/avatar [post]
+func (h *UserHandler) UploadAvatar(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if id != c.GetInt("user_id") {
+		c.JSON(403, gin.H{"error": "not your account"})
+		return
+	}
+
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "no file provided"})
+		return
+	}
+
+	// 2MB максимум
+	if file.Size > 2<<20 {
+		c.JSON(400, gin.H{"error": "file too large (max 2MB)"})
+		return
+	}
+
+	ext := filepath.Ext(file.Filename)
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		c.JSON(400, gin.H{"error": "only jpg/png allowed"})
+		return
+	}
+
+	// имя файла — user_id + расширение, перезаписываем при повторной загрузке
+	filename := fmt.Sprintf("%d%s", id, ext)
+	dst := filepath.Join(h.uploadPath, filename)
+
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.JSON(500, gin.H{"error": "failed to save file"})
+		return
+	}
+
+	avatarURL := "/uploads/avatars/" + filename
+	if err := h.svc.UpdateAvatar(id, avatarURL); err != nil {
+		c.JSON(500, gin.H{"error": "failed to update avatar"})
+		return
+	}
+
+	c.JSON(200, gin.H{"avatar": avatarURL})
 }

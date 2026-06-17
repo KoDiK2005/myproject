@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS likes (
+    user_id INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+    post_id INTEGER NOT NULL REFERENCES posts(id)  ON DELETE CASCADE,
+    PRIMARY KEY (user_id, post_id)
+);

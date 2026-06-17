@@ -65,6 +65,43 @@ func (m *mockPostRepo) Delete(id int) error {
 	return nil
 }
 
+// Search — простейшая заглушка, в реальном коде тут ILIKE
+func (m *mockPostRepo) Search(query string, limit, offset int) ([]models.Post, error) {
+	var result []models.Post
+	for _, p := range m.posts {
+		if len(result) >= limit {
+			break
+		}
+		if containsStr(p.Title, query) || containsStr(p.Body, query) {
+			result = append(result, p)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockPostRepo) SearchCount(query string) (int, error) {
+	count := 0
+	for _, p := range m.posts {
+		if containsStr(p.Title, query) || containsStr(p.Body, query) {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func containsStr(s, sub string) bool {
+	return len(sub) > 0 && len(s) >= len(sub) && (s == sub || len(s) > 0 && stringContains(s, sub))
+}
+
+func stringContains(s, sub string) bool {
+	for i := 0; i <= len(s)-len(sub); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}
+
 // сам тест
 func TestCreatePost(t *testing.T) {
 	repo := &mockPostRepo{}

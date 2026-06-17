@@ -1,166 +1,117 @@
-# myproject
+# myproject — REST API на Go + Gin + PostgreSQL
 
-Учебный REST API на Go с PostgreSQL.
+Учебный проект. Полноценный REST API с авторизацией, пагинацией, поиском, комментариями, лайками и загрузкой файлов.
 
 ## Стек
 
-- Go + Gin
-- PostgreSQL + sqlx
-- Layered architecture: handler -> service -> repository
-- Docker + docker-compose
-- zerolog — структурированное логирование
-- golang.org/x/time/rate — rate limiting по IP
+- **Go 1.22** + **Gin** — HTTP фреймворк
+- **PostgreSQL** + **sqlx** — база данных
+- **JWT** — авторизация (access 15мин + refresh 7 дней)
+- **zerolog** — структурированные логи
+- **Prometheus** — метрики
+- **Swagger** — документация (`/swagger/index.html`)
+- **Docker Compose** — запуск одной командой
+- **GitHub Actions** — CI (unit + integration тесты)
 
-## Структура
-
-```
-cmd/myapp/        — точка входа
-internal/
-  config/         — конфиг из env
-  handler/        — HTTP-хендлеры + middleware
-  service/        — бизнес-логика
-  repository/     — работа с БД
-  models/         — структуры данных
-migrations/       — SQL-миграции
-```
-
-## Запуск через Docker
+## Запуск
 
 ```bash
 docker compose up --build
 ```
 
-Миграции применяются автоматически при первом запуске.
+API будет доступен на `http://localhost:8080`
 
-## Запуск без Docker
+## Переменные окружения
 
-Скопируй `.env.example` в `.env` и заполни своими данными:
-
-```bash
-cp .env.example .env
-go run ./cmd/myapp
-```
-
-## Авторизация
-
-PUT и DELETE защищены JWT. Сначала получи токен:
-
-```
-POST /auth/login → { "token": "..." }
-```
-
-Затем передавай в заголовке:
-
-```
-Authorization: Bearer <token>
-```
+| Переменная    | Описание              | Пример                                                |
+|---------------|-----------------------|-------------------------------------------------------|
+| DATABASE_URL  | Строка подключения к БД | postgres://postgres:password@db:5432/mydb?sslmode=disable |
+| JWT_SECRET    | Секрет для JWT токенов | supersecret                                          |
+| PORT          | Порт сервера          | 8080                                                  |
 
 ## Эндпоинты
 
-| Метод  | URL                       | Авторизация | Описание                        |
-|--------|---------------------------|-------------|---------------------------------|
-| POST   | /auth/login               | —           | Получить JWT токен              |
-| POST   | /api/v1/users             | —           | Создать пользователя            |
-| GET    | /api/v1/users             | —           | Список пользователей            |
-| GET    | /api/v1/users/{id}        | —           | Получить по ID                  |
-| GET    | /api/v1/users/{id}/posts  | —           | Посты конкретного пользователя  |
-| PUT    | /api/v1/users/{id}        | JWT         | Обновить пользователя           |
-| DELETE | /api/v1/users/{id}        | JWT         | Удалить пользователя            |
-| GET    | /api/v1/posts             | —           | Список постов                   |
-| GET    | /api/v1/posts/{id}        | —           | Получить пост по ID             |
-| POST   | /api/v1/posts             | JWT         | Создать пост                    |
-| PUT    | /api/v1/posts/{id}        | JWT         | Обновить пост (только автор)    |
-| DELETE | /api/v1/posts/{id}        | JWT         | Удалить пост (только автор)     |
+### Auth
+| Метод | URL              | Описание                    |
+|-------|------------------|-----------------------------|
+| POST  | /auth/login      | Логин, возвращает оба токена |
+| POST  | /auth/refresh    | Обновить access token       |
+| POST  | /auth/logout     | Отозвать refresh token      |
 
-### Пагинация
+### Users
+| Метод  | URL                    | Auth | Описание              |
+|--------|------------------------|------|-----------------------|
+| GET    | /api/v1/users          | —    | Список юзеров (пагинация) |
+| POST   | /api/v1/users          | —    | Создать юзера         |
+| GET    | /api/v1/users/:id      | —    | Получить юзера        |
+| PUT    | /api/v1/users/:id      | ✓    | Обновить себя         |
+| DELETE | /api/v1/users/:id      | ✓    | Удалить себя          |
+| POST   | /api/v1/users/:id/avatar | ✓  | Загрузить аватар (jpg/png, макс 2MB) |
 
-`GET /api/v1/posts` и `GET /api/v1/users/{id}/posts` поддерживают пагинацию:
+### Posts
+| Метод  | URL                | Auth | Описание                        |
+|--------|--------------------|------|---------------------------------|
+| GET    | /api/v1/posts      | —    | Список постов (`?page=&limit=&search=`) |
+| POST   | /api/v1/posts      | ✓    | Создать пост                    |
+| GET    | /api/v1/posts/:id  | —    | Получить пост                   |
+| PUT    | /api/v1/posts/:id  | ✓    | Обновить свой пост              |
+| DELETE | /api/v1/posts/:id  | ✓    | Удалить свой пост               |
 
-```
-GET /api/v1/posts?page=2&limit=10
-```
+### Comments
+| Метод  | URL                         | Auth | Описание              |
+|--------|-----------------------------|------|-----------------------|
+| GET    | /api/v1/posts/:id/comments  | —    | Комментарии к посту   |
+| POST   | /api/v1/posts/:id/comments  | ✓    | Добавить комментарий  |
+| DELETE | /api/v1/comments/:id        | ✓    | Удалить свой комментарий |
 
-| Параметр | Дефолт | Описание              |
-|----------|--------|-----------------------|
-| page     | 1      | Номер страницы        |
-| limit    | 10     | Записей на странице (макс. 100) |
+### Likes
+| Метод  | URL                      | Auth | Описание        |
+|--------|--------------------------|------|-----------------|
+| GET    | /api/v1/posts/:id/likes  | —    | Кол-во лайков   |
+| POST   | /api/v1/posts/:id/like   | ✓    | Лайкнуть        |
+| DELETE | /api/v1/posts/:id/like   | ✓    | Убрать лайк     |
 
-### POST /auth/login
+### Системные
+| Метод | URL              | Описание               |
+|-------|------------------|------------------------|
+| GET   | /health          | Проверка работоспособности |
+| GET   | /metrics         | Prometheus метрики     |
+| GET   | /swagger/*any    | Swagger UI             |
 
-```json
-// запрос
-{ "email": "mark@example.com", "password": "secret123" }
-
-// ответ 200
-{ "token": "eyJhbGci..." }
-```
-
-### POST /api/v1/users
-
-```json
-// запрос
-{ "name": "Mark", "email": "mark@example.com", "password": "secret123" }
-
-// ответ 201
-{ "id": 1, "name": "Mark", "email": "mark@example.com" }
-```
-
-### PUT /api/v1/users/{id}
-
-Только свой аккаунт. Чужой — 403.
-
-```json
-// запрос
-{ "name": "Mark Updated", "email": "mark2@example.com" }
-
-// ответ 200
-{ "id": 1, "name": "Mark Updated", "email": "mark2@example.com" }
-```
-
-### PUT /api/v1/posts/{id}
-
-Только автор поста. Чужой — 403.
-
-```json
-// запрос
-{ "title": "Новый заголовок", "body": "Новое тело поста" }
-
-// ответ 200
-{ "id": 1, "title": "Новый заголовок", "body": "Новое тело поста", "user_id": 1 }
-```
-
-## Правила доступа
-
-- `PUT /users/{id}` и `DELETE /users/{id}` — только свой аккаунт
-- `PUT /posts/{id}` и `DELETE /posts/{id}` — только автор поста
-
-## Swagger UI
-
-Документация API доступна после запуска по адресу:
-
-```
-http://localhost:8080/swagger/index.html
-```
-
-Можно авторизоваться через JWT и тыкать все эндпоинты прямо в браузере.
-
-После изменений в аннотациях — перегенерировать:
+## Запуск тестов
 
 ```bash
-swag init -g cmd/myapp/main.go
+# юнит-тесты
+go test ./...
+
+# интеграционные (нужен PostgreSQL)
+DATABASE_URL=postgres://... go test -tags integration ./internal/repository/... -v
 ```
 
----
+## Миграции
 
-## Rate limiting
+Применяются вручную:
+```bash
+psql $DATABASE_URL -f migrations/001_create_users_table.sql
+psql $DATABASE_URL -f migrations/002_add_password.sql
+psql $DATABASE_URL -f migrations/003_create_posts.sql
+psql $DATABASE_URL -f migrations/004_create_refresh_tokens.sql
+psql $DATABASE_URL -f migrations/005_create_comments.sql
+psql $DATABASE_URL -f migrations/006_create_likes.sql
+psql $DATABASE_URL -f migrations/007_add_avatar_to_users.sql
+```
 
-10 запросов/сек с burst до 20 на каждый IP. При превышении — `429 Too Many Requests`.
-
-## Логирование
-
-Структурированные логи через zerolog. Каждый запрос логируется с методом, путём, статусом и latency:
+## Архитектура
 
 ```
-INF request method=GET path=/api/v1/posts status=200 latency=2ms
-WRN rate limit exceeded ip=1.2.3.4
+cmd/myapp/         — точка входа
+internal/
+  config/          — конфиг из env
+  handler/         — HTTP хендлеры + middleware
+  service/         — бизнес-логика
+  repository/      — работа с БД
+  models/          — структуры данных
+  logger/          — zerolog
+migrations/        — SQL миграции
+docs/              — сгенерированный Swagger
 ```

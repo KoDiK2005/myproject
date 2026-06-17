@@ -13,8 +13,9 @@ type UserRepository interface {
 	GetAll(limit, offset int) ([]models.User, error)
 	Count() (int, error)
 	Delete(id int) error
-	Update(id int, name, email string) (*models.User, error) // имя и мейл — не весь юзер
+	Update(id int, name, email string) (*models.User, error)
 	GetByEmail(email string) (*models.User, error)
+	UpdateAvatar(id int, path string) error
 }
 
 type UserService struct {
@@ -64,6 +65,10 @@ func (s *UserService) DeleteUser(id int) error {
 
 func (s *UserService) UpdateUser(id int, input models.UpdateUserInput) (*models.User, error) {
 	return s.repo.Update(id, input.Name, input.Email)
+}
+
+func (s *UserService) UpdateAvatar(id int, path string) error {
+	return s.repo.UpdateAvatar(id, path)
 }
 
 func (s *UserService) Login(input models.LoginInput) (*models.User, error) {

@@ -12,6 +12,8 @@ type PostRepository interface {
 	Update(id int, title, body string) (*models.Post, error)
 	Count() (int, error)
 	Delete(id int) error
+	Search(query string, limit, offset int) ([]models.Post, error)
+	SearchCount(query string) (int, error)
 }
 
 type PostService struct {
@@ -68,6 +70,19 @@ func (s *PostService) UpdatePost(id, userID int, input models.UpdatePostInput) (
 		return nil, ErrForbidden
 	}
 	return s.repo.Update(id, input.Title, input.Body)
+}
+
+func (s *PostService) SearchPosts(query string, page, limit int) (*models.PaginatedResponse, error) {
+	offset := (page - 1) * limit
+	posts, err := s.repo.Search(query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	total, err := s.repo.SearchCount(query)
+	if err != nil {
+		return nil, err
+	}
+	return &models.PaginatedResponse{Data: posts, Total: total, Page: page, Limit: limit}, nil
 }
 
 func (s *PostService) DeletePost(id, userID int) error {
