@@ -7,13 +7,11 @@ import (
 type PostRepository interface {
 	Create(post *models.Post) error
 	GetByID(id int) (*models.Post, error)
-	GetAll(limit, offset int) ([]models.Post, error)
+	GetAllWithCount(limit, offset int) ([]models.Post, int, error)
 	GetByUserID(userID, limit, offset int) ([]models.Post, error)
 	Update(id int, title, body string) (*models.Post, error)
-	Count() (int, error)
 	Delete(id int) error
-	Search(query string, limit, offset int) ([]models.Post, error)
-	SearchCount(query string) (int, error)
+	SearchWithCount(query string, limit, offset int) ([]models.Post, int, error)
 }
 
 type PostService struct {
@@ -40,11 +38,7 @@ func (s *PostService) GetPostByID(id int) (*models.Post, error) {
 
 func (s *PostService) ListPosts(page, limit int) (*models.PaginatedResponse, error) {
 	offset := (page - 1) * limit
-	posts, err := s.repo.GetAll(limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	total, err := s.repo.Count()
+	posts, total, err := s.repo.GetAllWithCount(limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -57,10 +51,9 @@ func (s *PostService) GetPostsByUserID(userID, page, limit int) (*models.Paginat
 	if err != nil {
 		return nil, err
 	}
-	// считаем только посты этого юзера
-	total := len(posts)
-	return &models.PaginatedResponse{Data: posts, Total: total, Page: page, Limit: limit}, nil
+	return &models.PaginatedResponse{Data: posts, Total: len(posts), Page: page, Limit: limit}, nil
 }
+
 func (s *PostService) UpdatePost(id, userID int, input models.UpdatePostInput) (*models.Post, error) {
 	post, err := s.repo.GetByID(id)
 	if err != nil || post == nil {
@@ -74,11 +67,7 @@ func (s *PostService) UpdatePost(id, userID int, input models.UpdatePostInput) (
 
 func (s *PostService) SearchPosts(query string, page, limit int) (*models.PaginatedResponse, error) {
 	offset := (page - 1) * limit
-	posts, err := s.repo.Search(query, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	total, err := s.repo.SearchCount(query)
+	posts, total, err := s.repo.SearchWithCount(query, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +80,6 @@ func (s *PostService) DeletePost(id, userID int) error {
 		return ErrNotFound
 	}
 	if post.UserID != userID {
-		// чужой пост — нечего тут делать
 		return ErrForbidden
 	}
 	return s.repo.Delete(id)

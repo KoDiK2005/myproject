@@ -26,12 +26,15 @@ func (m *mockPostRepo) GetByID(id int) (*models.Post, error) {
 	return nil, nil
 }
 
-func (m *mockPostRepo) GetAll(limit, offset int) ([]models.Post, error) {
-	return m.posts, nil
-}
-
-func (m *mockPostRepo) Count() (int, error) {
-	return len(m.posts), nil
+func (m *mockPostRepo) GetAllWithCount(limit, offset int) ([]models.Post, int, error) {
+	end := offset + limit
+	if end > len(m.posts) {
+		end = len(m.posts)
+	}
+	if offset > len(m.posts) {
+		return nil, len(m.posts), nil
+	}
+	return m.posts[offset:end], len(m.posts), nil
 }
 
 func (m *mockPostRepo) GetByUserID(userID, limit, offset int) ([]models.Post, error) {
@@ -65,28 +68,22 @@ func (m *mockPostRepo) Delete(id int) error {
 	return nil
 }
 
-// Search — простейшая заглушка, в реальном коде тут ILIKE
-func (m *mockPostRepo) Search(query string, limit, offset int) ([]models.Post, error) {
-	var result []models.Post
-	for _, p := range m.posts {
-		if len(result) >= limit {
-			break
-		}
-		if containsStr(p.Title, query) || containsStr(p.Body, query) {
-			result = append(result, p)
-		}
-	}
-	return result, nil
-}
-
-func (m *mockPostRepo) SearchCount(query string) (int, error) {
-	count := 0
+func (m *mockPostRepo) SearchWithCount(query string, limit, offset int) ([]models.Post, int, error) {
+	var matched []models.Post
 	for _, p := range m.posts {
 		if containsStr(p.Title, query) || containsStr(p.Body, query) {
-			count++
+			matched = append(matched, p)
 		}
 	}
-	return count, nil
+	total := len(matched)
+	end := offset + limit
+	if end > len(matched) {
+		end = len(matched)
+	}
+	if offset > len(matched) {
+		return nil, total, nil
+	}
+	return matched[offset:end], total, nil
 }
 
 func containsStr(s, sub string) bool {

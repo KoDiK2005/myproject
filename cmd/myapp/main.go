@@ -43,6 +43,11 @@ func main() {
 	}
 	defer db.Close()
 
+	// connection pool: без этого при нагрузке база захлебнётся
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	userRepo := repository.NewUserRepo(db)
 	postRepo := repository.NewPostRepo(db)
 	refreshTokenRepo := repository.NewRefreshTokenRepo(db)
