@@ -15,6 +15,18 @@ export function clearTokens() {
   localStorage.removeItem('refresh_token')
 }
 
+// Декодируем JWT без библиотек — нам нужен только user_id
+export function getCurrentUserId() {
+  const token = getAccessToken()
+  if (!token) return null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.user_id
+  } catch {
+    return null
+  }
+}
+
 export async function login(email, password) {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: 'POST',

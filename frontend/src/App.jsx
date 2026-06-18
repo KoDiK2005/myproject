@@ -3,6 +3,7 @@ import { getAccessToken } from './api/auth'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import HomePage from './pages/HomePage'
+import ProfilePage from './pages/ProfilePage'
 import './index.css'
 
 // Защищённый роут — если нет токена, шлём на /login
@@ -21,6 +22,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <HomePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <ProfilePage />
             </PrivateRoute>
           }
         />
