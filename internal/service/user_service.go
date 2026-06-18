@@ -79,10 +79,17 @@ func (s *UserService) DeleteUser(id int) error {
 
 func (s *UserService) UpdateUser(id int, input models.UpdateUserInput) (*models.User, error) {
 	user, err := s.repo.Update(id, input.Name, input.Email)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrNotFound
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return nil, ErrEmailTaken
+		}
+		return nil, err
 	}
-	return user, err
+	return user, nil
 }
 
 func (s *UserService) UpdateAvatar(id int, path string) error {
