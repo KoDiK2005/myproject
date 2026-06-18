@@ -1,31 +1,30 @@
+import { Link } from 'react-router-dom'
 import { getCurrentUserId } from '../api/auth'
 
 export default function PostCard({ post, onDelete }) {
   const currentUserId = getCurrentUserId()
   const isOwner = currentUserId === post.user_id
 
-  const date = new Date(post.created_at).toLocaleDateString('ru-RU', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  })
-
-  async function handleDelete() {
+  async function handleDelete(e) {
+    e.preventDefault() // чтобы не переходить по ссылке при клике на крестик
     if (!confirm('Удалить пост?')) return
     onDelete(post.id)
   }
 
   return (
-    <div className="post-card">
-      <div className="post-header">
-        <h2 className="post-title">{post.title}</h2>
-        {isOwner && (
-          <button className="post-delete-btn" onClick={handleDelete} title="Удалить">✕</button>
-        )}
+    <Link to={`/posts/${post.id}`} className="post-card-link">
+      <div className="post-card">
+        <div className="post-header">
+          <h2 className="post-title">{post.title}</h2>
+          {isOwner && (
+            <button className="post-delete-btn" onClick={handleDelete} title="Удалить">✕</button>
+          )}
+        </div>
+        <p className="post-body post-body-clamp">{post.body}</p>
+        <div className="post-meta">
+          <span>Автор #{post.user_id}</span>
+        </div>
       </div>
-      <p className="post-body">{post.body}</p>
-      <div className="post-meta">
-        <span>Пользователь #{post.user_id}</span>
-        <span>{date}</span>
-      </div>
-    </div>
+    </Link>
   )
 }
