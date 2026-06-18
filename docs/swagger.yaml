@@ -1,5 +1,34 @@
 basePath: /api/v1
 definitions:
+  handler.refreshInput:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  models.Comment:
+    properties:
+      body:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      post_id:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  models.CreateCommentInput:
+    properties:
+      body:
+        maxLength: 1000
+        minLength: 1
+        type: string
+    required:
+    - body
+    type: object
   models.CreatePostInput:
     properties:
       body:
@@ -90,6 +119,8 @@ definitions:
     type: object
   models.User:
     properties:
+      avatar:
+        type: string
       email:
         type: string
       id:
@@ -139,6 +170,96 @@ paths:
       summary: Получить JWT токен
       tags:
       - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.refreshInput'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Выйти (отозвать refresh token)
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.refreshInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обновить access token
+      tags:
+      - auth
+  /comments/{id}:
+    delete:
+      parameters:
+      - description: ID комментария
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить комментарий
+      tags:
+      - comments
   /posts:
     get:
       parameters:
@@ -152,6 +273,10 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: Поиск по title/body
+        in: query
+        name: search
+        type: string
       produces:
       - application/json
       responses:
@@ -165,7 +290,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Список постов
+      summary: Список постов (с опциональным поиском)
       tags:
       - posts
     post:
@@ -300,6 +425,138 @@ paths:
       summary: Обновить пост
       tags:
       - posts
+  /posts/{id}/comments:
+    get:
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Comment'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Список комментариев к посту
+      tags:
+      - comments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Текст комментария
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateCommentInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Comment'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Добавить комментарий
+      tags:
+      - comments
+  /posts/{id}/like:
+    delete:
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Убрать лайк
+      tags:
+      - likes
+    post:
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Лайкнуть пост
+      tags:
+      - likes
+  /posts/{id}/likes:
+    get:
+      parameters:
+      - description: ID поста
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Количество лайков у поста
+      tags:
+      - likes
   /users:
     get:
       parameters:
@@ -457,6 +714,47 @@ paths:
       security:
       - BearerAuth: []
       summary: Обновить пользователя
+      tags:
+      - users
+  /users/{id}/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Файл аватара (jpg/png, макс 2MB)
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Загрузить аватар пользователя
       tags:
       - users
   /users/{id}/posts:
