@@ -24,7 +24,9 @@ func NewRefreshTokenService(repo RefreshTokenRepository) *RefreshTokenService {
 
 func (s *RefreshTokenService) GenerateToken(userID int) (*models.RefreshToken, error) {
 	bytes := make([]byte, 32)
-	rand.Read(bytes)
+	if _, err := rand.Read(bytes); err != nil {
+		return nil, err
+	}
 
 	token := &models.RefreshToken{
 		UserID:    userID,

@@ -173,9 +173,12 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	}
 	user, err := h.svc.UpdateUser(id, input)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
+		switch {
+		case errors.Is(err, service.ErrNotFound):
 			c.JSON(404, gin.H{"error": "user not found"})
-		} else {
+		case errors.Is(err, service.ErrEmailTaken):
+			c.JSON(409, gin.H{"error": "email already taken"})
+		default:
 			c.JSON(500, gin.H{"error": err.Error()})
 		}
 		return

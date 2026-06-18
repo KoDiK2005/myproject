@@ -36,7 +36,10 @@ import (
 func main() {
 	logger.Init()
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Log.Fatal().Err(err).Msg("invalid configuration")
+	}
 	db, err := sqlx.Connect("postgres", cfg.DatabaseURL)
 	if err != nil {
 		logger.Log.Fatal().Err(err).Msg("failed to connect to database")
