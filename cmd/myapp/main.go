@@ -56,18 +56,21 @@ func main() {
 	refreshTokenRepo := repository.NewRefreshTokenRepo(db)
 	commentRepo := repository.NewCommentRepo(db)
 	likeRepo := repository.NewLikeRepo(db)
+	friendshipRepo := repository.NewFriendshipRepo(db)
 
 	userSvc := service.NewUserService(userRepo)
 	postSvc := service.NewPostService(postRepo)
 	refreshTokenSvc := service.NewRefreshTokenService(refreshTokenRepo)
 	commentSvc := service.NewCommentService(commentRepo)
 	likeSvc := service.NewLikeService(likeRepo)
+	friendshipSvc := service.NewFriendshipService(friendshipRepo)
 
 	userHandler := handler.NewUserHandler(userSvc)
 	postHandler := handler.NewPostHandler(postSvc)
 	authHandler := handler.NewAuthHandler(userSvc, refreshTokenSvc, cfg.JWTSecret)
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	likeHandler := handler.NewLikeHandler(likeSvc)
+	friendshipHandler := handler.NewFriendshipHandler(friendshipSvc)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -106,7 +109,8 @@ func main() {
 		api.GET("/users/:id", userHandler.GetUser)
 		api.GET("/users/:id/posts", postHandler.GetPostsByUser)
 
-		api.GET("/posts", postHandler.ListPosts)
+		// лента с optional auth — авторизованные получают персональный фид
+		api.GET("/posts", handler.OptionalAuthMiddleware(cfg.JWTSecret), postHandler.ListPosts)
 		api.GET("/posts/:id", postHandler.GetPost)
 		api.GET("/posts/:id/comments", commentHandler.ListComments)
 		api.GET("/posts/:id/likes", likeHandler.GetLikeCount)
@@ -128,6 +132,16 @@ func main() {
 
 		protected.POST("/posts/:id/like", likeHandler.LikePost)
 		protected.DELETE("/posts/:id/like", likeHandler.UnlikePost)
+
+		// дружба
+		protected.POST("/friends/request/:id", friendshipHandler.SendRequest)
+		protected.POST("/friends/accept/:id", friendshipHandler.Accept)
+		protected.POST("/friends/reject/:id", friendshipHandler.Reject)
+		protected.DELETE("/friends/:id", friendshipHandler.Remove)
+		protected.GET("/friends", friendshipHandler.GetFriends)
+		protected.GET("/friends/requests/incoming", friendshipHandler.GetIncomingRequests)
+		protected.GET("/friends/requests/outgoing", friendshipHandler.GetOutgoingRequests)
+		protected.GET("/friends/status/:id", friendshipHandler.GetStatus)
 	}
 
 	port := cfg.Port

@@ -48,7 +48,11 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 	var resp *models.PaginatedResponse
 	if search != "" {
 		resp, err = h.svc.SearchPosts(search, page, limit)
+	} else if userID := c.GetInt("user_id"); userID != 0 {
+		// авторизован — персональная лента (свои + друзья + публичные)
+		resp, err = h.svc.GetFeed(userID, page, limit)
 	} else {
+		// гость — только публичные
 		resp, err = h.svc.ListPosts(page, limit)
 	}
 	if err != nil {

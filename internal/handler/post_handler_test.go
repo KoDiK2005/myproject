@@ -54,7 +54,11 @@ func (m *mockPostRepo) GetByUserID(userID, limit, offset int) ([]models.Post, er
 	return result, nil
 }
 
-func (m *mockPostRepo) Update(id int, title, body string) (*models.Post, error) {
+func (m *mockPostRepo) GetFeedWithCount(userID, limit, offset int) ([]models.Post, int, error) {
+	return m.GetAllWithCount(limit, offset)
+}
+
+func (m *mockPostRepo) Update(id int, title, body, visibility string) (*models.Post, error) {
 	for i, p := range m.posts {
 		if p.ID == id {
 			m.posts[i].Title = title
