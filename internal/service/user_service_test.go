@@ -57,6 +57,10 @@ func (m *mockUserRepo) GetByEmail(email string) (*models.User, error) {
 	return nil, errors.New("not found")
 }
 
+func (m *mockUserRepo) Search(query string, limit, offset int) ([]models.User, int, error) {
+	return m.users, len(m.users), nil
+}
+
 func (m *mockUserRepo) UpdateAvatar(id int, path string) error {
 	for i, u := range m.users {
 		if u.ID == id {

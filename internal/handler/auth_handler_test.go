@@ -60,6 +60,10 @@ func (m *mockUserRepo) GetByEmail(email string) (*models.User, error) {
 
 func (m *mockUserRepo) UpdateAvatar(id int, path string) error { return nil }
 
+func (m *mockUserRepo) Search(query string, limit, offset int) ([]models.User, int, error) {
+	return m.users, len(m.users), nil
+}
+
 // mockRefreshTokenRepo — минимальная реализация
 type mockRefreshTokenRepo struct {
 	tokens []models.RefreshToken

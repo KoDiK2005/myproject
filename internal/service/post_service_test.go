@@ -175,7 +175,7 @@ func TestGetPostsByUserID(t *testing.T) {
 	svc.CreatePost(models.CreatePostInput{Title: "post3", Body: "body3"}, 2)
 
 	// получи посты юзера 1
-	resp, err := svc.GetPostsByUserID(1, 1, 10)
+	resp, err := svc.GetPostsByUserID(1, 0, 1, 10)
 
 	if err != nil {
 		t.Fatalf("не ожидали ошибку: %v", err)
