@@ -17,7 +17,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false)
 
   const [showForm, setShowForm] = useState(false)
-  const [newPost, setNewPost] = useState({ title: '', body: '' })
+  const [newPost, setNewPost] = useState({ title: '', body: '', visibility: 'public' })
   const [creating, setCreating] = useState(false)
 
   const limit = 10
@@ -49,10 +49,10 @@ export default function HomePage() {
     if (!newPost.title.trim() || !newPost.body.trim()) return
     setCreating(true)
     try {
-      const post = await createPost(newPost.title, newPost.body)
+      const post = await createPost(newPost.title, newPost.body, newPost.visibility)
       setPosts(prev => [post, ...prev])
       setTotal(prev => prev + 1)
-      setNewPost({ title: '', body: '' })
+      setNewPost({ title: '', body: '', visibility: 'public' })
       setShowForm(false)
       showToast('Пост опубликован!', 'success')
     } catch (err) {
@@ -85,6 +85,7 @@ export default function HomePage() {
       <nav className="navbar">
         <span className="navbar-brand">MyProject</span>
         <div className="navbar-links">
+          <Link to="/friends">Друзья</Link>
           <Link to="/profile">Профиль</Link>
           <button onClick={handleLogout} className="logout-btn">Выйти</button>
         </div>
@@ -101,7 +102,8 @@ export default function HomePage() {
           />
           <button type="submit" className="search-btn">Найти</button>
           {search && (
-            <button type="button" className="search-btn" onClick={() => { setSearch(''); setSearchInput(''); setPage(1) }}>
+            <button type="button" className="search-btn"
+              onClick={() => { setSearch(''); setSearchInput(''); setPage(1) }}>
               Сбросить
             </button>
           )}
@@ -128,6 +130,23 @@ export default function HomePage() {
               required
               rows={4}
             />
+            {/* переключатель приватности */}
+            <div className="visibility-toggle">
+              <button
+                type="button"
+                className={`vis-btn ${newPost.visibility === 'public' ? 'active' : ''}`}
+                onClick={() => setNewPost({ ...newPost, visibility: 'public' })}
+              >
+                🌍 Публично
+              </button>
+              <button
+                type="button"
+                className={`vis-btn ${newPost.visibility === 'friends' ? 'active' : ''}`}
+                onClick={() => setNewPost({ ...newPost, visibility: 'friends' })}
+              >
+                🔒 Только друзья
+              </button>
+            </div>
             <button type="submit" disabled={creating}>
               {creating ? 'Публикуем...' : 'Опубликовать'}
             </button>
