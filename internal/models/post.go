@@ -10,12 +10,12 @@ type Post struct {
 
 type CreatePostInput struct {
 	Title      string `json:"title"      binding:"required,min=3,max=200"`
-	Body       string `json:"body"       binding:"required,min=10,max=10000"`
+	Body       string `json:"body"       binding:"required,min=1,max=10000"`
 	Visibility string `json:"visibility"` // public | friends, default public
 }
 
 type UpdatePostInput struct {
 	Title      string `json:"title"      binding:"required,min=3,max=200"`
-	Body       string `json:"body"       binding:"required,min=10,max=10000"`
+	Body       string `json:"body"       binding:"required,min=1,max=10000"`
 	Visibility string `json:"visibility"`
 }
