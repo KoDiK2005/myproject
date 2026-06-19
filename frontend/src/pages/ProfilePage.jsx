@@ -2,32 +2,31 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { getCurrentUserId, logout } from '../api/auth'
 import { getUser, updateUser, uploadAvatar } from '../api/users'
+import { useToast, ToastContainer } from '../components/Toast'
 
 const BASE_URL = 'http://localhost:8080'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
+  const { toasts, showToast } = useToast()
 
   const [user, setUser] = useState(null)
   const [form, setForm] = useState({ name: '', email: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   const userId = getCurrentUserId()
 
   useEffect(() => {
     if (!userId) { navigate('/login'); return }
-
     getUser(userId)
       .then(data => {
         setUser(data)
         setForm({ name: data.name, email: data.email })
       })
-      .catch(err => setError(err.message))
+      .catch(err => showToast(err.message))
       .finally(() => setLoading(false))
   }, [userId])
 
@@ -37,15 +36,13 @@ export default function ProfilePage() {
 
   async function handleSave(e) {
     e.preventDefault()
-    setError('')
-    setSuccess('')
     setSaving(true)
     try {
       const updated = await updateUser(userId, form.name, form.email)
       setUser(updated)
-      setSuccess('Профиль обновлён')
+      showToast('Профиль обновлён', 'success')
     } catch (err) {
-      setError(err.message)
+      showToast(err.message)
     } finally {
       setSaving(false)
     }
@@ -54,16 +51,13 @@ export default function ProfilePage() {
   async function handleAvatarChange(e) {
     const file = e.target.files[0]
     if (!file) return
-
-    setError('')
     setUploadingAvatar(true)
     try {
       const data = await uploadAvatar(userId, file)
-      // обновляем аватар без перезагрузки всего профиля
       setUser(prev => ({ ...prev, avatar: data.avatar }))
-      setSuccess('Аватар обновлён')
+      showToast('Аватар обновлён', 'success')
     } catch (err) {
-      setError(err.message)
+      showToast(err.message)
     } finally {
       setUploadingAvatar(false)
     }
@@ -78,6 +72,8 @@ export default function ProfilePage() {
 
   return (
     <div className="profile-page">
+      <ToastContainer toasts={toasts} />
+
       <nav className="profile-nav">
         <Link to="/">← Лента</Link>
         <button onClick={handleLogout} className="logout-btn">Выйти</button>
@@ -86,7 +82,6 @@ export default function ProfilePage() {
       <div className="profile-container">
         <h1>Профиль</h1>
 
-        {/* Аватар */}
         <div className="avatar-section">
           <div className="avatar-wrapper" onClick={() => fileInputRef.current.click()}>
             {user?.avatar
@@ -107,7 +102,6 @@ export default function ProfilePage() {
           <p className="avatar-hint">Нажми чтобы сменить аватар (jpg/png, макс 2MB)</p>
         </div>
 
-        {/* Форма */}
         <form onSubmit={handleSave} className="profile-form">
           <div className="field">
             <label>Имя</label>
@@ -131,9 +125,6 @@ export default function ProfilePage() {
               required
             />
           </div>
-
-          {error && <p className="error">{error}</p>}
-          {success && <p className="success">{success}</p>}
 
           <button type="submit" disabled={saving}>
             {saving ? 'Сохраняем...' : 'Сохранить'}

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCurrentUserId } from '../api/auth'
-import { getPosts } from '../api/posts'
 import { getComments, createComment, deleteComment } from '../api/comments'
 import { getLikeCount, likePost, unlikePost } from '../api/likes'
+import { useToast, ToastContainer } from '../components/Toast'
 
 export default function PostPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { toasts, showToast } = useToast()
   const currentUserId = getCurrentUserId()
   const postId = Number(id)
 
@@ -17,14 +18,11 @@ export default function PostPage() {
   const [liked, setLiked] = useState(false)
   const [commentBody, setCommentBody] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     async function load() {
       try {
-        // getPosts не имеет getById — используем search по id через список
-        // но у нас есть эндпоинт /posts/:id — делаем прямой fetch
         const [postRes, commentsData, likesData] = await Promise.all([
           fetch(`http://localhost:8080/api/v1/posts/${postId}`).then(r => r.json()),
           getComments(postId),
@@ -34,7 +32,7 @@ export default function PostPage() {
         setComments(commentsData ?? [])
         setLikeCount(likesData.count ?? 0)
       } catch (err) {
-        setError(err.message)
+        showToast(err.message)
       } finally {
         setLoading(false)
       }
@@ -53,7 +51,7 @@ export default function PostPage() {
       }
       setLiked(v => !v)
     } catch (err) {
-      setError(err.message)
+      showToast(err.message)
     }
   }
 
@@ -66,19 +64,19 @@ export default function PostPage() {
       setComments(prev => [...prev, comment])
       setCommentBody('')
     } catch (err) {
-      setError(err.message)
+      showToast(err.message)
     } finally {
       setSubmitting(false)
     }
   }
 
   async function handleDeleteComment(commentId) {
-    if (!confirm('Удалить комментарий?')) return
     try {
       await deleteComment(commentId)
       setComments(prev => prev.filter(c => c.id !== commentId))
+      showToast('Комментарий удалён', 'info')
     } catch (err) {
-      setError(err.message)
+      showToast(err.message)
     }
   }
 
@@ -87,30 +85,24 @@ export default function PostPage() {
 
   return (
     <div className="post-page">
+      <ToastContainer toasts={toasts} />
+
       <nav className="navbar">
         <button className="back-btn" onClick={() => navigate(-1)}>← Назад</button>
-        <Link to="/profile" className="navbar-links" style={{ color: '#aaa', textDecoration: 'none', fontSize: '0.9rem' }}>Профиль</Link>
+        <Link to="/profile" style={{ color: '#aaa', textDecoration: 'none', fontSize: '0.9rem' }}>Профиль</Link>
       </nav>
 
       <div className="post-full">
-        {/* Пост */}
         <h1 className="post-full-title">{post.title}</h1>
         <p className="post-full-meta">Автор #{post.user_id}</p>
         <p className="post-full-body">{post.body}</p>
 
-        {/* Лайк */}
         <div className="like-section">
-          <button
-            className={`like-btn ${liked ? 'liked' : ''}`}
-            onClick={handleLike}
-          >
+          <button className={`like-btn ${liked ? 'liked' : ''}`} onClick={handleLike}>
             {liked ? '❤️' : '🤍'} {likeCount}
           </button>
         </div>
 
-        {error && <p className="error">{error}</p>}
-
-        {/* Комментарии */}
         <div className="comments-section">
           <h2>Комментарии ({comments.length})</h2>
 

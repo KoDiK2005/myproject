@@ -1,13 +1,6 @@
-import { getAccessToken } from './auth'
+import { apiFetch } from './auth'
 
 const BASE_URL = 'http://localhost:8080'
-
-function authHeaders(extra = {}) {
-  return {
-    Authorization: `Bearer ${getAccessToken()}`,
-    ...extra,
-  }
-}
 
 export async function getPosts({ page = 1, limit = 10, search = '' } = {}) {
   const params = new URLSearchParams({ page, limit })
@@ -16,13 +9,13 @@ export async function getPosts({ page = 1, limit = 10, search = '' } = {}) {
   const res = await fetch(`${BASE_URL}/api/v1/posts?${params}`)
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Ошибка загрузки постов')
-  return data // { data: [], total, page, limit }
+  return data
 }
 
 export async function createPost(title, body) {
-  const res = await fetch(`${BASE_URL}/api/v1/posts`, {
+  const res = await apiFetch(`${BASE_URL}/api/v1/posts`, {
     method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title, body }),
   })
   const data = await res.json()
@@ -31,9 +24,8 @@ export async function createPost(title, body) {
 }
 
 export async function deletePost(id) {
-  const res = await fetch(`${BASE_URL}/api/v1/posts/${id}`, {
+  const res = await apiFetch(`${BASE_URL}/api/v1/posts/${id}`, {
     method: 'DELETE',
-    headers: authHeaders(),
   })
   if (res.status === 204) return
   const data = await res.json()

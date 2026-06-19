@@ -86,7 +86,13 @@ func main() {
 
 	r.Static("/uploads", "./uploads")
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	r.GET("/health", func(c *gin.Context) {
+		if err := db.PingContext(c.Request.Context()); err != nil {
+			c.JSON(503, gin.H{"status": "unavailable", "error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	r.POST("/auth/login", authHandler.Login)

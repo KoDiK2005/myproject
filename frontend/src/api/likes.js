@@ -1,10 +1,6 @@
-import { getAccessToken } from './auth'
+import { apiFetch } from './auth'
 
 const BASE_URL = 'http://localhost:8080'
-
-function authHeaders() {
-  return { Authorization: `Bearer ${getAccessToken()}` }
-}
 
 export async function getLikeCount(postId) {
   const res = await fetch(`${BASE_URL}/api/v1/posts/${postId}/likes`)
@@ -14,9 +10,8 @@ export async function getLikeCount(postId) {
 }
 
 export async function likePost(postId) {
-  const res = await fetch(`${BASE_URL}/api/v1/posts/${postId}/like`, {
+  const res = await apiFetch(`${BASE_URL}/api/v1/posts/${postId}/like`, {
     method: 'POST',
-    headers: authHeaders(),
   })
   if (res.status === 204 || res.status === 200) return
   const data = await res.json()
@@ -24,9 +19,8 @@ export async function likePost(postId) {
 }
 
 export async function unlikePost(postId) {
-  const res = await fetch(`${BASE_URL}/api/v1/posts/${postId}/like`, {
+  const res = await apiFetch(`${BASE_URL}/api/v1/posts/${postId}/like`, {
     method: 'DELETE',
-    headers: authHeaders(),
   })
   if (res.status === 204 || res.status === 200) return
   const data = await res.json()

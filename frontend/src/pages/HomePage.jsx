@@ -3,9 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { logout } from '../api/auth'
 import { getPosts, createPost, deletePost } from '../api/posts'
 import PostCard from '../components/PostCard'
+import { useToast, ToastContainer } from '../components/Toast'
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const { toasts, showToast } = useToast()
 
   const [posts, setPosts] = useState([])
   const [total, setTotal] = useState(0)
@@ -13,9 +15,7 @@ export default function HomePage() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
-  // форма создания поста
   const [showForm, setShowForm] = useState(false)
   const [newPost, setNewPost] = useState({ title: '', body: '' })
   const [creating, setCreating] = useState(false)
@@ -25,21 +25,18 @@ export default function HomePage() {
 
   const fetchPosts = useCallback(async () => {
     setLoading(true)
-    setError('')
     try {
       const res = await getPosts({ page, limit, search })
       setPosts(res.data ?? [])
       setTotal(res.total)
     } catch (err) {
-      setError(err.message)
+      showToast(err.message)
     } finally {
       setLoading(false)
     }
   }, [page, search])
 
-  useEffect(() => {
-    fetchPosts()
-  }, [fetchPosts])
+  useEffect(() => { fetchPosts() }, [fetchPosts])
 
   function handleSearch(e) {
     e.preventDefault()
@@ -57,8 +54,9 @@ export default function HomePage() {
       setTotal(prev => prev + 1)
       setNewPost({ title: '', body: '' })
       setShowForm(false)
+      showToast('Пост опубликован!', 'success')
     } catch (err) {
-      setError(err.message)
+      showToast(err.message)
     } finally {
       setCreating(false)
     }
@@ -69,8 +67,9 @@ export default function HomePage() {
       await deletePost(id)
       setPosts(prev => prev.filter(p => p.id !== id))
       setTotal(prev => prev - 1)
+      showToast('Пост удалён', 'info')
     } catch (err) {
-      setError(err.message)
+      showToast(err.message)
     }
   }
 
@@ -81,7 +80,8 @@ export default function HomePage() {
 
   return (
     <div className="home-page">
-      {/* Navbar */}
+      <ToastContainer toasts={toasts} />
+
       <nav className="navbar">
         <span className="navbar-brand">MyProject</span>
         <div className="navbar-links">
@@ -91,7 +91,6 @@ export default function HomePage() {
       </nav>
 
       <div className="feed">
-        {/* Поиск */}
         <form onSubmit={handleSearch} className="search-form">
           <input
             type="text"
@@ -108,12 +107,10 @@ export default function HomePage() {
           )}
         </form>
 
-        {/* Кнопка создать пост */}
         <button className="create-btn" onClick={() => setShowForm(v => !v)}>
           {showForm ? 'Отмена' : '+ Новый пост'}
         </button>
 
-        {/* Форма создания */}
         {showForm && (
           <form onSubmit={handleCreate} className="create-form">
             <input
@@ -137,9 +134,6 @@ export default function HomePage() {
           </form>
         )}
 
-        {error && <p className="error">{error}</p>}
-
-        {/* Лента */}
         {loading ? (
           <p className="feed-status">Загружаем посты...</p>
         ) : posts.length === 0 ? (
@@ -150,7 +144,6 @@ export default function HomePage() {
           ))
         )}
 
-        {/* Пагинация */}
         {totalPages > 1 && (
           <div className="pagination">
             <button onClick={() => setPage(p => p - 1)} disabled={page === 1}>← Назад</button>

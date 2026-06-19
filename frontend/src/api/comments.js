@@ -1,10 +1,6 @@
-import { getAccessToken } from './auth'
+import { apiFetch } from './auth'
 
 const BASE_URL = 'http://localhost:8080'
-
-function authHeaders(extra = {}) {
-  return { Authorization: `Bearer ${getAccessToken()}`, ...extra }
-}
 
 export async function getComments(postId) {
   const res = await fetch(`${BASE_URL}/api/v1/posts/${postId}/comments`)
@@ -14,9 +10,9 @@ export async function getComments(postId) {
 }
 
 export async function createComment(postId, body) {
-  const res = await fetch(`${BASE_URL}/api/v1/posts/${postId}/comments`, {
+  const res = await apiFetch(`${BASE_URL}/api/v1/posts/${postId}/comments`, {
     method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ body }),
   })
   const data = await res.json()
@@ -25,9 +21,8 @@ export async function createComment(postId, body) {
 }
 
 export async function deleteComment(commentId) {
-  const res = await fetch(`${BASE_URL}/api/v1/comments/${commentId}`, {
+  const res = await apiFetch(`${BASE_URL}/api/v1/comments/${commentId}`, {
     method: 'DELETE',
-    headers: authHeaders(),
   })
   if (res.status === 204) return
   const data = await res.json()

@@ -46,6 +46,9 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	// ротация: старый токен сразу инвалидируем — повторно использовать нельзя
+	h.refreshSvc.RevokeToken(input.Token)
+
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": rt.UserID,
 		"exp":     time.Now().Add(15 * time.Minute).Unix(),
@@ -56,7 +59,17 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"access_token": accessTokenStr})
+	// выдаём новый refresh token
+	newRT, err := h.refreshSvc.GenerateToken(rt.UserID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to generate refresh token"})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"access_token":  accessTokenStr,
+		"refresh_token": newRT.Token,
+	})
 }
 
 // Logout godoc
