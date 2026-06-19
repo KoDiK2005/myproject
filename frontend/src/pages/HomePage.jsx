@@ -4,10 +4,12 @@ import { logout } from '../api/auth'
 import { getPosts, createPost, deletePost } from '../api/posts'
 import PostCard from '../components/PostCard'
 import { useToast, ToastContainer } from '../components/Toast'
+import { useFriendBadge } from '../hooks/useFriendBadge'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const { toasts, showToast } = useToast()
+  const friendBadge = useFriendBadge()
 
   const [posts, setPosts] = useState([])
   const [total, setTotal] = useState(0)
@@ -85,7 +87,12 @@ export default function HomePage() {
       <nav className="navbar">
         <span className="navbar-brand">MyProject</span>
         <div className="navbar-links">
-          <Link to="/friends">Друзья</Link>
+          <Link to="/people">Люди</Link>
+          <Link to="/messages">Сообщения</Link>
+          <Link to="/friends" className="navbar-badge-link">
+            Друзья
+            {friendBadge > 0 && <span className="navbar-badge">{friendBadge}</span>}
+          </Link>
           <Link to="/profile">Профиль</Link>
           <button onClick={handleLogout} className="logout-btn">Выйти</button>
         </div>

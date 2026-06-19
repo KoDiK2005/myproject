@@ -9,7 +9,7 @@ type PostRepository interface {
 	GetByID(id int) (*models.Post, error)
 	GetAllWithCount(limit, offset int) ([]models.Post, int, error)
 	GetFeedWithCount(userID, limit, offset int) ([]models.Post, int, error)
-	GetByUserID(userID, limit, offset int) ([]models.Post, error)
+	GetByUserIDForViewer(ownerID, viewerID, limit, offset int) ([]models.Post, error)
 	Update(id int, title, body, visibility string) (*models.Post, error)
 	Delete(id int) error
 	SearchWithCount(query string, limit, offset int) ([]models.Post, int, error)
@@ -62,9 +62,10 @@ func (s *PostService) GetFeed(userID, page, limit int) (*models.PaginatedRespons
 	return &models.PaginatedResponse{Data: posts, Total: total, Page: page, Limit: limit}, nil
 }
 
-func (s *PostService) GetPostsByUserID(userID, page, limit int) (*models.PaginatedResponse, error) {
+// GetPostsByUserID — посты конкретного юзера с учётом того кто смотрит
+func (s *PostService) GetPostsByUserID(ownerID, viewerID, page, limit int) (*models.PaginatedResponse, error) {
 	offset := (page - 1) * limit
-	posts, err := s.repo.GetByUserID(userID, limit, offset)
+	posts, err := s.repo.GetByUserIDForViewer(ownerID, viewerID, limit, offset)
 	if err != nil {
 		return nil, err
 	}

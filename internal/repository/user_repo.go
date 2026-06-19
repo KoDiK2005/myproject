@@ -65,6 +65,34 @@ func (r *UserRepo) Update(id int, name, email string) (*models.User, error) {
 	return &user, err
 }
 
+// Search — поиск юзеров по имени (ILIKE, pg_trgm уже есть)
+func (r *UserRepo) Search(query string, limit, offset int) ([]models.User, int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+	like := "%" + query + "%"
+	type row struct {
+		models.User
+		Total int `db:"total"`
+	}
+	var rows []row
+	err := r.db.SelectContext(ctx, &rows,
+		`SELECT id, name, email, avatar, COUNT(*) OVER() AS total
+		 FROM users
+		 WHERE name ILIKE $1
+		 ORDER BY name
+		 LIMIT $2 OFFSET $3`,
+		like, limit, offset)
+	if err != nil || len(rows) == 0 {
+		return nil, 0, err
+	}
+	total := rows[0].Total
+	users := make([]models.User, len(rows))
+	for i, r := range rows {
+		users[i] = r.User
+	}
+	return users, total, nil
+}
+
 func (r *UserRepo) Count() (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()

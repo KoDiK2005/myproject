@@ -22,6 +22,7 @@ import (
 	"myproject/internal/logger"
 	"myproject/internal/repository"
 	"myproject/internal/service"
+	"myproject/internal/ws"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -57,6 +58,7 @@ func main() {
 	commentRepo := repository.NewCommentRepo(db)
 	likeRepo := repository.NewLikeRepo(db)
 	friendshipRepo := repository.NewFriendshipRepo(db)
+	messageRepo := repository.NewMessageRepo(db)
 
 	userSvc := service.NewUserService(userRepo)
 	postSvc := service.NewPostService(postRepo)
@@ -64,6 +66,10 @@ func main() {
 	commentSvc := service.NewCommentService(commentRepo)
 	likeSvc := service.NewLikeService(likeRepo)
 	friendshipSvc := service.NewFriendshipService(friendshipRepo)
+	messageSvc := service.NewMessageService(messageRepo)
+
+	wsHub := ws.NewHub()
+	go wsHub.Run() // запускаем горутину-диспетчер
 
 	userHandler := handler.NewUserHandler(userSvc)
 	postHandler := handler.NewPostHandler(postSvc)
@@ -71,6 +77,7 @@ func main() {
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	likeHandler := handler.NewLikeHandler(likeSvc)
 	friendshipHandler := handler.NewFriendshipHandler(friendshipSvc)
+	messageHandler := handler.NewMessageHandler(messageSvc, wsHub)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -102,12 +109,15 @@ func main() {
 	r.POST("/auth/refresh", authHandler.Refresh)
 	r.POST("/auth/logout", authHandler.Logout)
 
+	// WebSocket — авторизация через query param ?token=...
+	r.GET("/ws", handler.AuthMiddleware(cfg.JWTSecret), messageHandler.WSConnect)
+
 	api := r.Group("/api/v1")
 	{
 		api.GET("/users", userHandler.ListUsers)
 		api.POST("/users", userHandler.CreateUser)
 		api.GET("/users/:id", userHandler.GetUser)
-		api.GET("/users/:id/posts", postHandler.GetPostsByUser)
+		api.GET("/users/:id/posts", handler.OptionalAuthMiddleware(cfg.JWTSecret), postHandler.GetPostsByUser)
 
 		// лента с optional auth — авторизованные получают персональный фид
 		api.GET("/posts", handler.OptionalAuthMiddleware(cfg.JWTSecret), postHandler.ListPosts)
@@ -132,6 +142,11 @@ func main() {
 
 		protected.POST("/posts/:id/like", likeHandler.LikePost)
 		protected.DELETE("/posts/:id/like", likeHandler.UnlikePost)
+
+		// мессенджер
+		protected.GET("/messages", messageHandler.GetConversations)
+		protected.GET("/messages/:id", messageHandler.GetHistory)
+		protected.POST("/messages/:id", messageHandler.SendMessage)
 
 		// дружба
 		protected.POST("/friends/request/:id", friendshipHandler.SendRequest)

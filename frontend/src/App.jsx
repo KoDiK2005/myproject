@@ -7,6 +7,9 @@ import ProfilePage from './pages/ProfilePage'
 import PostPage from './pages/PostPage'
 import FriendsPage from './pages/FriendsPage'
 import UserPage from './pages/UserPage'
+import PeoplePage from './pages/PeoplePage'
+import MessagesPage from './pages/MessagesPage'
+import ChatPage from './pages/ChatPage'
 import './index.css'
 
 // Защищённый роут — если нет токена, шлём на /login
@@ -51,6 +54,22 @@ export default function App() {
               <FriendsPage />
             </PrivateRoute>
           }
+        />
+        <Route
+          path="/people"
+          element={
+            <PrivateRoute>
+              <PeoplePage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={<PrivateRoute><MessagesPage /></PrivateRoute>}
+        />
+        <Route
+          path="/messages/:id"
+          element={<PrivateRoute><ChatPage /></PrivateRoute>}
         />
         {/* профиль другого юзера — доступен и без авторизации */}
         <Route path="/users/:id" element={<UserPage />} />

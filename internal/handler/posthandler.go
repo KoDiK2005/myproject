@@ -94,7 +94,8 @@ func (h *PostHandler) GetPostsByUser(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.svc.GetPostsByUserID(userID, page, limit)
+	viewerID := c.GetInt("user_id") // 0 если гость
+	resp, err := h.svc.GetPostsByUserID(userID, viewerID, page, limit)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Internal Server Error"})
 		return

@@ -51,14 +51,32 @@ func (r *PostRepo) GetByID(id int) (*models.Post, error) {
 	return &post, err
 }
 
-func (r *PostRepo) GetByUserID(userID, limit, offset int) ([]models.Post, error) {
+// GetByUserIDForViewer — посты юзера с учётом видимости.
+// viewerID=0 → гость, видит только public.
+// viewerID=ownerID → видит все свои.
+// иначе → public + friends если дружат.
+func (r *PostRepo) GetByUserIDForViewer(ownerID, viewerID, limit, offset int) ([]models.Post, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 	var posts []models.Post
 	err := r.db.SelectContext(ctx, &posts,
 		`SELECT id, title, body, user_id, visibility
-		 FROM posts WHERE user_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3`,
-		userID, limit, offset)
+		 FROM posts
+		 WHERE user_id = $1
+		   AND (
+		     visibility = 'public'
+		     OR $2 = $1
+		     OR (visibility = 'friends' AND $2 != 0 AND EXISTS (
+		         SELECT 1 FROM friendships
+		         WHERE (
+		             (requester_id = $1 AND addressee_id = $2)
+		             OR (requester_id = $2 AND addressee_id = $1)
+		         ) AND status = 'accepted'
+		     ))
+		   )
+		 ORDER BY id DESC
+		 LIMIT $3 OFFSET $4`,
+		ownerID, viewerID, limit, offset)
 	return posts, err
 }
 

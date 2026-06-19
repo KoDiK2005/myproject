@@ -39,21 +39,24 @@ func OptionalAuthMiddleware(secret string) gin.HandlerFunc {
 
 func AuthMiddleware(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(401, gin.H{"error": "authorization header required"})
+		// поддерживаем и header (REST) и query param (WebSocket)
+		tokenStr := ""
+		if h := c.GetHeader("Authorization"); h != "" {
+			parts := strings.SplitN(h, " ", 2)
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenStr = parts[1]
+			}
+		} else if q := c.Query("token"); q != "" {
+			tokenStr = q
+		}
+
+		if tokenStr == "" {
+			c.JSON(401, gin.H{"error": "authorization required"})
 			c.Abort()
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(401, gin.H{"error": "invalid authorization format"})
-			c.Abort()
-			return
-		}
-
-		token, err := jwt.Parse(parts[1], func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			return []byte(secret), nil
 		})
 		if err != nil || !token.Valid {
@@ -69,7 +72,6 @@ func AuthMiddleware(secret string) gin.HandlerFunc {
 			return
 		}
 		c.Set("user_id", int(uid))
-
 		c.Next()
 	}
 }

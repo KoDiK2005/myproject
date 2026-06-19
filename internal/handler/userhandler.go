@@ -47,7 +47,14 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.svc.ListUsers(page, limit)
+	search := c.Query("search")
+	var resp *models.PaginatedResponse
+	var err error
+	if search != "" {
+		resp, err = h.svc.SearchUsers(search, page, limit)
+	} else {
+		resp, err = h.svc.ListUsers(page, limit)
+	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Internal Server Error"})
 		return

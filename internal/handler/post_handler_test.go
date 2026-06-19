@@ -44,10 +44,10 @@ func (m *mockPostRepo) GetAllWithCount(limit, offset int) ([]models.Post, int, e
 	return m.posts[offset:end], len(m.posts), nil
 }
 
-func (m *mockPostRepo) GetByUserID(userID, limit, offset int) ([]models.Post, error) {
+func (m *mockPostRepo) GetByUserIDForViewer(ownerID, viewerID, limit, offset int) ([]models.Post, error) {
 	var result []models.Post
 	for _, p := range m.posts {
-		if p.UserID == userID {
+		if p.UserID == ownerID {
 			result = append(result, p)
 		}
 	}
