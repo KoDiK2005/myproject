@@ -49,7 +49,6 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 
 	search := c.Query("search")
 	var resp *models.PaginatedResponse
-	var err error
 	if search != "" {
 		resp, err = h.svc.SearchUsers(search, page, limit)
 	} else {
