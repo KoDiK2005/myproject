@@ -13,6 +13,7 @@ type PostRepository interface {
 	Update(id int, title, body, visibility string) (*models.Post, error)
 	Delete(id int) error
 	SearchWithCount(query string, limit, offset int) ([]models.Post, int, error)
+	IsFriend(userA, userB int) (bool, error)
 }
 
 type PostService struct {
@@ -38,8 +39,42 @@ func (s *PostService) CreatePost(input models.CreatePostInput, userID int) (*mod
 	return post, err
 }
 
-func (s *PostService) GetPostByID(id int) (*models.Post, error) {
-	return s.repo.GetByID(id)
+// GetPostByID — viewerID=0 для гостя. Приватные посты (friends) видят только
+// автор и его друзья; остальным возвращаем ErrNotFound, чтобы не подтверждать
+// существование поста.
+func (s *PostService) GetPostByID(id, viewerID int) (*models.Post, error) {
+	post, err := s.repo.GetByID(id)
+	if err != nil || post == nil {
+		return nil, ErrNotFound
+	}
+	ok, err := s.canView(post, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrNotFound
+	}
+	return post, nil
+}
+
+// CanViewPost — то же самое, но без выдачи поста; используется другими
+// сервисами (например комментариями) для проверки доступа.
+func (s *PostService) CanViewPost(postID, viewerID int) (bool, error) {
+	post, err := s.repo.GetByID(postID)
+	if err != nil || post == nil {
+		return false, nil
+	}
+	return s.canView(post, viewerID)
+}
+
+func (s *PostService) canView(post *models.Post, viewerID int) (bool, error) {
+	if post.Visibility != "friends" || viewerID == post.UserID {
+		return true, nil
+	}
+	if viewerID == 0 {
+		return false, nil
+	}
+	return s.repo.IsFriend(post.UserID, viewerID)
 }
 
 // ListPosts — публичная лента (без авторизации)

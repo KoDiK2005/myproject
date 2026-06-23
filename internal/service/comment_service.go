@@ -9,25 +9,45 @@ type CommentRepository interface {
 	Delete(id int) error
 }
 
-type CommentService struct {
-	repo CommentRepository
+// PostAccessChecker — проверка видимости поста для пользователя (реализует *PostService)
+type PostAccessChecker interface {
+	CanViewPost(postID, viewerID int) (bool, error)
 }
 
-func NewCommentService(repo CommentRepository) *CommentService {
-	return &CommentService{repo: repo}
+type CommentService struct {
+	repo        CommentRepository
+	postChecker PostAccessChecker
+}
+
+func NewCommentService(repo CommentRepository, postChecker PostAccessChecker) *CommentService {
+	return &CommentService{repo: repo, postChecker: postChecker}
 }
 
 func (s *CommentService) AddComment(postID, userID int, input models.CreateCommentInput) (*models.Comment, error) {
+	ok, err := s.postChecker.CanViewPost(postID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrNotFound
+	}
 	c := &models.Comment{
 		PostID: postID,
 		UserID: userID,
 		Body:   input.Body,
 	}
-	err := s.repo.Create(c)
+	err = s.repo.Create(c)
 	return c, err
 }
 
-func (s *CommentService) ListComments(postID int) ([]models.Comment, error) {
+func (s *CommentService) ListComments(postID, viewerID int) ([]models.Comment, error) {
+	ok, err := s.postChecker.CanViewPost(postID, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrNotFound
+	}
 	return s.repo.GetByPostID(postID)
 }
 

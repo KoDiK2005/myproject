@@ -47,9 +47,16 @@ func (m *mockCommentRepo) Delete(id int) error {
 	return nil
 }
 
+// allowAllPostChecker — мок PostAccessChecker, который всегда разрешает доступ
+type allowAllPostChecker struct{}
+
+func (allowAllPostChecker) CanViewPost(postID, viewerID int) (bool, error) {
+	return true, nil
+}
+
 func TestAddComment(t *testing.T) {
 	repo := &mockCommentRepo{}
-	svc := NewCommentService(repo)
+	svc := NewCommentService(repo, allowAllPostChecker{})
 
 	c, err := svc.AddComment(1, 2, models.CreateCommentInput{Body: "привет"})
 	if err != nil {
@@ -71,9 +78,9 @@ func TestListComments(t *testing.T) {
 			{ID: 3, PostID: 99, UserID: 1, Body: "не наш пост"},
 		},
 	}
-	svc := NewCommentService(repo)
+	svc := NewCommentService(repo, allowAllPostChecker{})
 
-	comments, err := svc.ListComments(10)
+	comments, err := svc.ListComments(10, 0)
 	if err != nil {
 		t.Fatalf("не ожидали ошибку: %v", err)
 	}
@@ -88,7 +95,7 @@ func TestDeleteComment_Owner(t *testing.T) {
 			{ID: 1, PostID: 1, UserID: 5, Body: "мой коммент"},
 		},
 	}
-	svc := NewCommentService(repo)
+	svc := NewCommentService(repo, allowAllPostChecker{})
 
 	err := svc.DeleteComment(1, 5) // user 5 удаляет свой коммент
 	if err != nil {
@@ -105,7 +112,7 @@ func TestDeleteComment_NotOwner(t *testing.T) {
 			{ID: 1, PostID: 1, UserID: 5, Body: "чужой коммент"},
 		},
 	}
-	svc := NewCommentService(repo)
+	svc := NewCommentService(repo, allowAllPostChecker{})
 
 	err := svc.DeleteComment(1, 99) // user 99 лезет в чужой коммент
 	if !errors.Is(err, ErrForbidden) {
@@ -114,7 +121,7 @@ func TestDeleteComment_NotOwner(t *testing.T) {
 }
 
 func TestDeleteComment_NotFound(t *testing.T) {
-	svc := NewCommentService(&mockCommentRepo{})
+	svc := NewCommentService(&mockCommentRepo{}, allowAllPostChecker{})
 
 	err := svc.DeleteComment(999, 1)
 	if !errors.Is(err, ErrNotFound) {

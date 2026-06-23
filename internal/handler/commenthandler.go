@@ -29,8 +29,13 @@ func (h *CommentHandler) ListComments(c *gin.Context) {
 	if !ok {
 		return
 	}
-	comments, err := h.svc.ListComments(postID)
+	viewerID := c.GetInt("user_id") // 0 если гость
+	comments, err := h.svc.ListComments(postID, viewerID)
 	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(404, gin.H{"error": "post not found"})
+			return
+		}
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -61,6 +66,10 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	comment, err := h.svc.AddComment(postID, userID, input)
 	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(404, gin.H{"error": "post not found"})
+			return
+		}
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}

@@ -191,3 +191,19 @@ func (r *PostRepo) Delete(id int) error {
 	_, err := r.db.ExecContext(ctx, "DELETE FROM posts WHERE id = $1", id)
 	return err
 }
+
+// IsFriend — проверка дружбы для проверки видимости friends-only постов
+func (r *PostRepo) IsFriend(userA, userB int) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+	var exists bool
+	err := r.db.QueryRowxContext(ctx,
+		`SELECT EXISTS(
+		   SELECT 1 FROM friendships
+		   WHERE ((requester_id = $1 AND addressee_id = $2)
+		       OR (requester_id = $2 AND addressee_id = $1))
+		   AND status = 'accepted'
+		 )`,
+		userA, userB).Scan(&exists)
+	return exists, err
+}

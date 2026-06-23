@@ -8,7 +8,15 @@ import (
 
 // мок-репозиторий — подделка которая ничего не знает о БД
 type mockPostRepo struct {
-	posts []models.Post
+	posts   []models.Post
+	friends map[[2]int]bool
+}
+
+func (m *mockPostRepo) IsFriend(userA, userB int) (bool, error) {
+	if m.friends == nil {
+		return false, nil
+	}
+	return m.friends[[2]int{userA, userB}] || m.friends[[2]int{userB, userA}], nil
 }
 
 func (m *mockPostRepo) Create(post *models.Post) error {
@@ -183,5 +191,32 @@ func TestGetPostsByUserID(t *testing.T) {
 	posts := resp.Data.([]models.Post)
 	if len(posts) != 2 {
 		t.Errorf("ожидали 2 поста, получили %d", len(posts))
+	}
+}
+
+func TestGetPostByID_VisibilityFriends(t *testing.T) {
+	repo := &mockPostRepo{friends: map[[2]int]bool{{1, 2}: true}}
+	svc := NewPostService(repo)
+
+	post, _ := svc.CreatePost(models.CreatePostInput{Title: "secret", Body: "body", Visibility: "friends"}, 1)
+
+	// гость не видит приватный пост
+	if _, err := svc.GetPostByID(post.ID, 0); !errors.Is(err, ErrNotFound) {
+		t.Errorf("гость: ожидали ErrNotFound, получили: %v", err)
+	}
+
+	// чужой не-друг (юзер 99) не видит
+	if _, err := svc.GetPostByID(post.ID, 99); !errors.Is(err, ErrNotFound) {
+		t.Errorf("не-друг: ожидали ErrNotFound, получили: %v", err)
+	}
+
+	// друг (юзер 2) видит
+	if _, err := svc.GetPostByID(post.ID, 2); err != nil {
+		t.Errorf("друг: не ожидали ошибку, получили: %v", err)
+	}
+
+	// автор видит свой пост
+	if _, err := svc.GetPostByID(post.ID, 1); err != nil {
+		t.Errorf("автор: не ожидали ошибку, получили: %v", err)
 	}
 }

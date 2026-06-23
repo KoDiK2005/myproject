@@ -63,7 +63,7 @@ func main() {
 	userSvc := service.NewUserService(userRepo)
 	postSvc := service.NewPostService(postRepo)
 	refreshTokenSvc := service.NewRefreshTokenService(refreshTokenRepo)
-	commentSvc := service.NewCommentService(commentRepo)
+	commentSvc := service.NewCommentService(commentRepo, postSvc)
 	likeSvc := service.NewLikeService(likeRepo)
 	friendshipSvc := service.NewFriendshipService(friendshipRepo)
 	messageSvc := service.NewMessageService(messageRepo)
@@ -121,8 +121,8 @@ func main() {
 
 		// лента с optional auth — авторизованные получают персональный фид
 		api.GET("/posts", handler.OptionalAuthMiddleware(cfg.JWTSecret), postHandler.ListPosts)
-		api.GET("/posts/:id", postHandler.GetPost)
-		api.GET("/posts/:id/comments", commentHandler.ListComments)
+		api.GET("/posts/:id", handler.OptionalAuthMiddleware(cfg.JWTSecret), postHandler.GetPost)
+		api.GET("/posts/:id/comments", handler.OptionalAuthMiddleware(cfg.JWTSecret), commentHandler.ListComments)
 		api.GET("/posts/:id/likes", likeHandler.GetLikeCount)
 	}
 
