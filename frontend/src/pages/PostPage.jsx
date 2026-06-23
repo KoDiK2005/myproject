@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCurrentUserId } from '../api/auth'
 import { getComments, createComment, deleteComment } from '../api/comments'
 import { getLikeCount, likePost, unlikePost } from '../api/likes'
+import { getPost } from '../api/posts'
 import { useToast, ToastContainer } from '../components/Toast'
 
 export default function PostPage() {
@@ -24,13 +25,14 @@ export default function PostPage() {
     async function load() {
       try {
         const [postRes, commentsData, likesData] = await Promise.all([
-          fetch(`http://localhost:8080/api/v1/posts/${postId}`).then(r => r.json()),
+          getPost(postId),
           getComments(postId),
           getLikeCount(postId),
         ])
         setPost(postRes)
         setComments(commentsData ?? [])
         setLikeCount(likesData.count ?? 0)
+        setLiked(likesData.liked ?? false)
       } catch (err) {
         showToast(err.message)
       } finally {

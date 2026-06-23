@@ -528,6 +528,23 @@ button[type='submit']:disabled {
   color: #f87171;
 }
 
+.like-btn-card {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0;
+}
+
+.like-btn-card:hover {
+  color: #f87171;
+}
+
+.like-btn-card.liked {
+  color: #f87171;
+}
+
 /* ---- Comments ---- */
 .comments-section h2 {
   font-size: 1.1rem;

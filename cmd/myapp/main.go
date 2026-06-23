@@ -123,7 +123,7 @@ func main() {
 		api.GET("/posts", handler.OptionalAuthMiddleware(cfg.JWTSecret), postHandler.ListPosts)
 		api.GET("/posts/:id", handler.OptionalAuthMiddleware(cfg.JWTSecret), postHandler.GetPost)
 		api.GET("/posts/:id/comments", handler.OptionalAuthMiddleware(cfg.JWTSecret), commentHandler.ListComments)
-		api.GET("/posts/:id/likes", likeHandler.GetLikeCount)
+		api.GET("/posts/:id/likes", handler.OptionalAuthMiddleware(cfg.JWTSecret), likeHandler.GetLikeCount)
 	}
 
 	protected := api.Group("")

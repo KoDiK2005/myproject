@@ -59,7 +59,7 @@ func (h *LikeHandler) UnlikePost(c *gin.Context) {
 }
 
 // GetLikeCount godoc
-// @Summary      Количество лайков у поста
+// @Summary      Количество лайков у поста (и лайкнул ли текущий юзер)
 // @Tags         likes
 // @Produce      json
 // @Param        id path int true "ID поста"
@@ -76,5 +76,10 @@ func (h *LikeHandler) GetLikeCount(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, gin.H{"count": count})
+	liked, err := h.svc.IsLiked(c.GetInt("user_id"), postID)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{"count": count, "liked": liked})
 }

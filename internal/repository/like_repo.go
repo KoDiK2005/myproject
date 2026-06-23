@@ -42,3 +42,14 @@ func (r *LikeRepo) Count(postID int) (int, error) {
 	err := r.db.QueryRowxContext(ctx, `SELECT COUNT(*) FROM likes WHERE post_id = $1`, postID).Scan(&count)
 	return count, err
 }
+
+// IsLiked — лайкнул ли userID пост postID
+func (r *LikeRepo) IsLiked(userID, postID int) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+	var exists bool
+	err := r.db.QueryRowxContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM likes WHERE user_id = $1 AND post_id = $2)`,
+		userID, postID).Scan(&exists)
+	return exists, err
+}

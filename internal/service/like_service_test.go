@@ -36,6 +36,10 @@ func (m *mockLikeRepo) Count(postID int) (int, error) {
 	return count, nil
 }
 
+func (m *mockLikeRepo) IsLiked(userID, postID int) (bool, error) {
+	return m.likes[likeKey(userID, postID)], nil
+}
+
 func TestLike(t *testing.T) {
 	repo := newMockLikeRepo()
 	svc := NewLikeService(repo)
@@ -87,5 +91,30 @@ func TestLikeIdempotent(t *testing.T) {
 	count, _ := svc.Count(10)
 	if count != 1 {
 		t.Errorf("ожидали 1 уникальный лайк, получили %d", count)
+	}
+}
+
+func TestIsLiked(t *testing.T) {
+	repo := newMockLikeRepo()
+	svc := NewLikeService(repo)
+
+	svc.Like(1, 10)
+
+	liked, err := svc.IsLiked(1, 10)
+	if err != nil {
+		t.Fatalf("не ожидали ошибку: %v", err)
+	}
+	if !liked {
+		t.Error("ожидали liked=true для юзера который лайкнул")
+	}
+
+	liked, _ = svc.IsLiked(2, 10)
+	if liked {
+		t.Error("ожидали liked=false для юзера который не лайкал")
+	}
+
+	liked, _ = svc.IsLiked(0, 10) // гость
+	if liked {
+		t.Error("гость не может быть liked=true")
 	}
 }

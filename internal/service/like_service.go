@@ -4,6 +4,7 @@ type LikeRepository interface {
 	Like(userID, postID int) error
 	Unlike(userID, postID int) error
 	Count(postID int) (int, error)
+	IsLiked(userID, postID int) (bool, error)
 }
 
 type LikeService struct {
@@ -24,4 +25,11 @@ func (s *LikeService) Unlike(userID, postID int) error {
 
 func (s *LikeService) Count(postID int) (int, error) {
 	return s.repo.Count(postID)
+}
+
+func (s *LikeService) IsLiked(userID, postID int) (bool, error) {
+	if userID == 0 {
+		return false, nil
+	}
+	return s.repo.IsLiked(userID, postID)
 }

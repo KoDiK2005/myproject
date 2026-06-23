@@ -18,7 +18,9 @@ export async function getPosts({ page = 1, limit = 10, search = '' } = {}) {
 }
 
 export async function getPost(id) {
-  const res = await fetch(`${BASE_URL}/api/v1/posts/${id}`)
+  const token = getAccessToken()
+  const headers = token ? { Authorization: `Bearer ${token}` } : {}
+  const res = await fetch(`${BASE_URL}/api/v1/posts/${id}`, { headers })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Пост не найден')
   return data

@@ -1,14 +1,45 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getCurrentUserId } from '../api/auth'
+import { getLikeCount, likePost, unlikePost } from '../api/likes'
 
 export default function PostCard({ post, onDelete }) {
   const currentUserId = getCurrentUserId()
   const isOwner = currentUserId === post.user_id
 
+  const [likeCount, setLikeCount] = useState(null)
+  const [liked, setLiked] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getLikeCount(post.id).then(data => {
+      if (cancelled) return
+      setLikeCount(data.count ?? 0)
+      setLiked(data.liked ?? false)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [post.id])
+
   async function handleDelete(e) {
     e.preventDefault()
     if (!confirm('Удалить пост?')) return
     onDelete(post.id)
+  }
+
+  async function handleLike(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!currentUserId) return
+    try {
+      if (liked) {
+        await unlikePost(post.id)
+        setLikeCount(c => c - 1)
+      } else {
+        await likePost(post.id)
+        setLikeCount(c => c + 1)
+      }
+      setLiked(v => !v)
+    } catch {}
   }
 
   return (
@@ -34,6 +65,11 @@ export default function PostCard({ post, onDelete }) {
           >
             Автор #{post.user_id}
           </Link>
+          {currentUserId && (
+            <button className={`like-btn-card ${liked ? 'liked' : ''}`} onClick={handleLike}>
+              {liked ? '❤️' : '🤍'} {likeCount ?? ''}
+            </button>
+          )}
         </div>
       </div>
     </Link>
