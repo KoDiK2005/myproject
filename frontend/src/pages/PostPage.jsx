@@ -96,7 +96,7 @@ export default function PostPage() {
 
       <div className="post-full">
         <h1 className="post-full-title">{post.title}</h1>
-        <p className="post-full-meta">Автор #{post.user_id}</p>
+        <p className="post-full-meta">{post.author_name || `Автор #${post.user_id}`}</p>
         <p className="post-full-body">{post.body}</p>
 
         <div className="like-section">
@@ -128,7 +128,7 @@ export default function PostPage() {
               comments.map(c => (
                 <div key={c.id} className="comment-card">
                   <div className="comment-header">
-                    <span className="comment-author">Пользователь #{c.user_id}</span>
+                    <span className="comment-author">{c.author_name || `Пользователь #${c.user_id}`}</span>
                     {c.user_id === currentUserId && (
                       <button className="post-delete-btn" onClick={() => handleDeleteComment(c.id)}>✕</button>
                     )}

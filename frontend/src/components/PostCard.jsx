@@ -63,7 +63,7 @@ export default function PostCard({ post, onDelete }) {
             className="post-author-link"
             onClick={e => e.stopPropagation()}
           >
-            Автор #{post.user_id}
+            {post.author_name || `Автор #${post.user_id}`}
           </Link>
           {currentUserId && (
             <button className={`like-btn-card ${liked ? 'liked' : ''}`} onClick={handleLike}>

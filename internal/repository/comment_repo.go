@@ -18,10 +18,15 @@ func NewCommentRepo(db *sqlx.DB) *CommentRepo {
 func (r *CommentRepo) Create(c *models.Comment) error {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
-	query := `INSERT INTO comments (post_id, user_id, body)
-	          VALUES ($1, $2, $3)
-	          RETURNING id, created_at`
-	return r.db.QueryRowxContext(ctx, query, c.PostID, c.UserID, c.Body).Scan(&c.ID, &c.CreatedAt)
+	query := `WITH inserted AS (
+	            INSERT INTO comments (post_id, user_id, body)
+	            VALUES ($1, $2, $3)
+	            RETURNING id, created_at
+	          )
+	          SELECT inserted.id, inserted.created_at, users.name AS author_name
+	          FROM inserted JOIN users ON users.id = $2`
+	return r.db.QueryRowxContext(ctx, query, c.PostID, c.UserID, c.Body).
+		Scan(&c.ID, &c.CreatedAt, &c.AuthorName)
 }
 
 func (r *CommentRepo) GetByPostID(postID int) ([]models.Comment, error) {
@@ -29,8 +34,10 @@ func (r *CommentRepo) GetByPostID(postID int) ([]models.Comment, error) {
 	defer cancel()
 	var comments []models.Comment
 	err := r.db.SelectContext(ctx, &comments,
-		`SELECT id, post_id, user_id, body, created_at
-		 FROM comments WHERE post_id = $1 ORDER BY created_at ASC`,
+		`SELECT comments.id, comments.post_id, comments.user_id, comments.body, comments.created_at,
+		        users.name AS author_name
+		 FROM comments JOIN users ON users.id = comments.user_id
+		 WHERE comments.post_id = $1 ORDER BY comments.created_at ASC`,
 		postID)
 	return comments, err
 }
