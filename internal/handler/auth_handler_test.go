@@ -111,6 +111,8 @@ func setupAuthRouter(userRepo service.UserRepository, rtRepo service.RefreshToke
 	rtSvc := service.NewRefreshTokenService(rtRepo)
 	h := handler.NewAuthHandler(userSvc, rtSvc, "test-secret")
 	r.POST("/auth/login", h.Login)
+	r.POST("/auth/refresh", h.Refresh)
+	r.POST("/auth/logout", h.Logout)
 	r.POST("/auth/logout-all", handler.AuthMiddleware("test-secret"), h.LogoutAll)
 	return r
 }
@@ -156,8 +158,85 @@ func TestLogin_Success(t *testing.T) {
 	if resp["access_token"] == "" {
 		t.Error("access_token пустой — что-то пошло не так")
 	}
-	if resp["refresh_token"] == "" {
-		t.Error("refresh_token пустой — что-то пошло не так")
+	if _, ok := resp["refresh_token"]; ok {
+		t.Error("refresh_token не должен уходить в JSON-теле — только в httpOnly cookie")
+	}
+
+	cookies := w.Result().Cookies()
+	var refreshCookie *http.Cookie
+	for _, ck := range cookies {
+		if ck.Name == "refresh_token" {
+			refreshCookie = ck
+		}
+	}
+	if refreshCookie == nil {
+		t.Fatal("ожидали cookie refresh_token в ответе")
+	}
+	if !refreshCookie.HttpOnly {
+		t.Error("cookie refresh_token должна быть HttpOnly")
+	}
+	if refreshCookie.Value == "" {
+		t.Error("cookie refresh_token пустая")
+	}
+}
+
+func TestRefresh_RotatesCookieAndRevokesOldToken(t *testing.T) {
+	user := newUserWithPassword(1, "test@example.com", "secret123")
+	userRepo := &mockUserRepo{users: []models.User{user}}
+	rtRepo := &mockRefreshTokenRepo{}
+	r := setupAuthRouter(userRepo, rtRepo)
+
+	// логинимся, забираем refresh-cookie
+	body, _ := json.Marshal(map[string]string{"email": "test@example.com", "password": "secret123"})
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/auth/login", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	var loginCookie *http.Cookie
+	for _, ck := range w.Result().Cookies() {
+		if ck.Name == "refresh_token" {
+			loginCookie = ck
+		}
+	}
+	if loginCookie == nil {
+		t.Fatal("ожидали refresh_token cookie после логина")
+	}
+
+	// первый refresh с этой cookie — должен пройти и выдать новую cookie
+	w2 := httptest.NewRecorder()
+	req2, _ := http.NewRequest("POST", "/auth/refresh", nil)
+	req2.AddCookie(loginCookie)
+	r.ServeHTTP(w2, req2)
+	if w2.Code != 200 {
+		t.Fatalf("ожидали 200 на первый refresh, получили %d: %s", w2.Code, w2.Body.String())
+	}
+	var newCookie *http.Cookie
+	for _, ck := range w2.Result().Cookies() {
+		if ck.Name == "refresh_token" {
+			newCookie = ck
+		}
+	}
+	if newCookie == nil || newCookie.Value == loginCookie.Value {
+		t.Fatal("ожидали новую отличающуюся refresh_token cookie после ротации")
+	}
+
+	// повторное использование старой cookie (replay) — должно быть отклонено
+	w3 := httptest.NewRecorder()
+	req3, _ := http.NewRequest("POST", "/auth/refresh", nil)
+	req3.AddCookie(loginCookie)
+	r.ServeHTTP(w3, req3)
+	if w3.Code != 401 {
+		t.Errorf("повторное использование отозванного refresh token должно давать 401, получили %d", w3.Code)
+	}
+}
+
+func TestRefresh_NoCookie(t *testing.T) {
+	r := setupAuthRouter(&mockUserRepo{}, &mockRefreshTokenRepo{})
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/auth/refresh", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != 401 {
+		t.Errorf("ожидали 401 без cookie, получили %d", w.Code)
 	}
 }
 
