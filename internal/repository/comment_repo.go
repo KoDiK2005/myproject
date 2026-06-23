@@ -29,7 +29,7 @@ func (r *CommentRepo) Create(c *models.Comment) error {
 		Scan(&c.ID, &c.CreatedAt, &c.AuthorName)
 }
 
-func (r *CommentRepo) GetByPostID(postID int) ([]models.Comment, error) {
+func (r *CommentRepo) GetByPostID(postID, limit, offset int) ([]models.Comment, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 	var comments []models.Comment
@@ -37,9 +37,20 @@ func (r *CommentRepo) GetByPostID(postID int) ([]models.Comment, error) {
 		`SELECT comments.id, comments.post_id, comments.user_id, comments.body, comments.created_at,
 		        users.name AS author_name
 		 FROM comments JOIN users ON users.id = comments.user_id
-		 WHERE comments.post_id = $1 ORDER BY comments.created_at ASC`,
-		postID)
+		 WHERE comments.post_id = $1
+		 ORDER BY comments.created_at ASC
+		 LIMIT $2 OFFSET $3`,
+		postID, limit, offset)
 	return comments, err
+}
+
+func (r *CommentRepo) CountByPostID(postID int) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+	var count int
+	err := r.db.QueryRowxContext(ctx,
+		`SELECT COUNT(*) FROM comments WHERE post_id = $1`, postID).Scan(&count)
+	return count, err
 }
 
 func (r *CommentRepo) GetByID(id int) (*models.Comment, error) {

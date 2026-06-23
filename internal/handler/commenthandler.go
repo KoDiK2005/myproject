@@ -20,8 +20,10 @@ func NewCommentHandler(svc *service.CommentService) *CommentHandler {
 // @Summary      Список комментариев к посту
 // @Tags         comments
 // @Produce      json
-// @Param        id path int true "ID поста"
-// @Success      200 {array}  models.Comment
+// @Param        id    path int true  "ID поста"
+// @Param        page  query int false "Страница" default(1)
+// @Param        limit query int false "Лимит"    default(20)
+// @Success      200 {object} models.PaginatedResponse
 // @Failure      400 {object} map[string]string
 // @Router       /posts/{id}/comments [get]
 func (h *CommentHandler) ListComments(c *gin.Context) {
@@ -29,8 +31,12 @@ func (h *CommentHandler) ListComments(c *gin.Context) {
 	if !ok {
 		return
 	}
+	page, limit, ok := parsePagination(c, 20, 100)
+	if !ok {
+		return
+	}
 	viewerID := c.GetInt("user_id") // 0 если гость
-	comments, err := h.svc.ListComments(postID, viewerID)
+	resp, err := h.svc.ListComments(postID, viewerID, page, limit)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
 			c.JSON(404, gin.H{"error": "post not found"})
@@ -39,7 +45,7 @@ func (h *CommentHandler) ListComments(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, comments)
+	c.JSON(200, resp)
 }
 
 // CreateComment godoc

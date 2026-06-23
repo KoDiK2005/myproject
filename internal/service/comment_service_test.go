@@ -18,14 +18,31 @@ func (m *mockCommentRepo) Create(c *models.Comment) error {
 	return nil
 }
 
-func (m *mockCommentRepo) GetByPostID(postID int) ([]models.Comment, error) {
+func (m *mockCommentRepo) GetByPostID(postID, limit, offset int) ([]models.Comment, error) {
 	var result []models.Comment
 	for _, c := range m.comments {
 		if c.PostID == postID {
 			result = append(result, c)
 		}
 	}
-	return result, nil
+	end := offset + limit
+	if end > len(result) {
+		end = len(result)
+	}
+	if offset > len(result) {
+		return nil, nil
+	}
+	return result[offset:end], nil
+}
+
+func (m *mockCommentRepo) CountByPostID(postID int) (int, error) {
+	count := 0
+	for _, c := range m.comments {
+		if c.PostID == postID {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (m *mockCommentRepo) GetByID(id int) (*models.Comment, error) {
@@ -80,12 +97,16 @@ func TestListComments(t *testing.T) {
 	}
 	svc := NewCommentService(repo, allowAllPostChecker{})
 
-	comments, err := svc.ListComments(10, 0)
+	resp, err := svc.ListComments(10, 0, 1, 20)
 	if err != nil {
 		t.Fatalf("не ожидали ошибку: %v", err)
 	}
+	comments := resp.Data.([]models.Comment)
 	if len(comments) != 2 {
 		t.Errorf("ожидали 2 комментария для post 10, получили %d", len(comments))
+	}
+	if resp.Total != 2 {
+		t.Errorf("ожидали total=2, получили %d", resp.Total)
 	}
 }
 

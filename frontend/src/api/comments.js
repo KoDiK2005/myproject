@@ -2,13 +2,14 @@ import { apiFetch, getAccessToken } from './auth'
 
 const BASE_URL = 'http://localhost:8080'
 
-export async function getComments(postId) {
+export async function getComments(postId, page = 1, limit = 20) {
   const token = getAccessToken()
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
-  const res = await fetch(`${BASE_URL}/api/v1/posts/${postId}/comments`, { headers })
+  const params = new URLSearchParams({ page, limit })
+  const res = await fetch(`${BASE_URL}/api/v1/posts/${postId}/comments?${params}`, { headers })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Ошибка загрузки комментариев')
-  return data
+  return data // { data, page, total, limit }
 }
 
 export async function createComment(postId, body) {

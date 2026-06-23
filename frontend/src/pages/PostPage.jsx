@@ -13,8 +13,13 @@ export default function PostPage() {
   const currentUserId = getCurrentUserId()
   const postId = Number(id)
 
+  const COMMENTS_PER_PAGE = 20
+
   const [post, setPost] = useState(null)
   const [comments, setComments] = useState([])
+  const [commentsTotal, setCommentsTotal] = useState(0)
+  const [commentsPage, setCommentsPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [liked, setLiked] = useState(false)
   const [commentBody, setCommentBody] = useState('')
@@ -28,13 +33,15 @@ export default function PostPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [postRes, commentsData, likesData] = await Promise.all([
+        const [postRes, commentsRes, likesData] = await Promise.all([
           getPost(postId),
-          getComments(postId),
+          getComments(postId, 1, COMMENTS_PER_PAGE),
           getLikeCount(postId),
         ])
         setPost(postRes)
-        setComments(commentsData ?? [])
+        setComments(commentsRes.data ?? [])
+        setCommentsTotal(commentsRes.total ?? 0)
+        setCommentsPage(1)
         setLikeCount(likesData.count ?? 0)
         setLiked(likesData.liked ?? false)
       } catch (err) {
@@ -68,11 +75,26 @@ export default function PostPage() {
     try {
       const comment = await createComment(postId, commentBody)
       setComments(prev => [...prev, comment])
+      setCommentsTotal(t => t + 1)
       setCommentBody('')
     } catch (err) {
       showToast(err.message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleLoadMoreComments() {
+    setLoadingMore(true)
+    try {
+      const nextPage = commentsPage + 1
+      const res = await getComments(postId, nextPage, COMMENTS_PER_PAGE)
+      setComments(prev => [...prev, ...(res.data ?? [])])
+      setCommentsPage(nextPage)
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -101,6 +123,7 @@ export default function PostPage() {
     try {
       await deleteComment(commentId)
       setComments(prev => prev.filter(c => c.id !== commentId))
+      setCommentsTotal(t => t - 1)
       showToast('Комментарий удалён', 'info')
     } catch (err) {
       showToast(err.message)
@@ -180,7 +203,7 @@ export default function PostPage() {
         </div>
 
         <div className="comments-section">
-          <h2>Комментарии ({comments.length})</h2>
+          <h2>Комментарии ({commentsTotal})</h2>
 
           <form onSubmit={handleComment} className="comment-form">
             <textarea
@@ -215,6 +238,17 @@ export default function PostPage() {
               ))
             )}
           </div>
+
+          {comments.length < commentsTotal && (
+            <button
+              className="btn-secondary"
+              onClick={handleLoadMoreComments}
+              disabled={loadingMore}
+              style={{ marginTop: '1rem' }}
+            >
+              {loadingMore ? 'Загружаем...' : 'Показать ещё'}
+            </button>
+          )}
         </div>
       </div>
     </div>

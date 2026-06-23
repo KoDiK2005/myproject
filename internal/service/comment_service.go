@@ -4,7 +4,8 @@ import "myproject/internal/models"
 
 type CommentRepository interface {
 	Create(c *models.Comment) error
-	GetByPostID(postID int) ([]models.Comment, error)
+	GetByPostID(postID, limit, offset int) ([]models.Comment, error)
+	CountByPostID(postID int) (int, error)
 	GetByID(id int) (*models.Comment, error)
 	Delete(id int) error
 }
@@ -40,7 +41,7 @@ func (s *CommentService) AddComment(postID, userID int, input models.CreateComme
 	return c, err
 }
 
-func (s *CommentService) ListComments(postID, viewerID int) ([]models.Comment, error) {
+func (s *CommentService) ListComments(postID, viewerID, page, limit int) (*models.PaginatedResponse, error) {
 	ok, err := s.postChecker.CanViewPost(postID, viewerID)
 	if err != nil {
 		return nil, err
@@ -48,7 +49,16 @@ func (s *CommentService) ListComments(postID, viewerID int) ([]models.Comment, e
 	if !ok {
 		return nil, ErrNotFound
 	}
-	return s.repo.GetByPostID(postID)
+	offset := (page - 1) * limit
+	comments, err := s.repo.GetByPostID(postID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	total, err := s.repo.CountByPostID(postID)
+	if err != nil {
+		return nil, err
+	}
+	return &models.PaginatedResponse{Data: comments, Total: total, Page: page, Limit: limit}, nil
 }
 
 func (s *CommentService) DeleteComment(id, userID int) error {
