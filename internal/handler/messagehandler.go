@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"myproject/internal/logger"
 	"myproject/internal/models"
 	"myproject/internal/service"
 	"myproject/internal/ws"
@@ -12,23 +13,31 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	// разрешаем с нашего фронт-домена
-	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		return origin == "http://localhost:3000" || origin == "http://localhost:5173"
-	},
-}
-
 type MessageHandler struct {
-	svc *service.MessageService
-	hub *ws.Hub
+	svc      *service.MessageService
+	hub      *ws.Hub
+	upgrader websocket.Upgrader
 }
 
-func NewMessageHandler(svc *service.MessageService, hub *ws.Hub) *MessageHandler {
-	return &MessageHandler{svc: svc, hub: hub}
+func NewMessageHandler(svc *service.MessageService, hub *ws.Hub, allowedOrigins []string) *MessageHandler {
+	return &MessageHandler{
+		svc: svc,
+		hub: hub,
+		upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			// разрешаем с нашего фронт-домена
+			CheckOrigin: func(r *http.Request) bool {
+				origin := r.Header.Get("Origin")
+				for _, allowed := range allowedOrigins {
+					if origin == allowed {
+						return true
+					}
+				}
+				return false
+			},
+		},
+	}
 }
 
 // WSConnect godoc
@@ -38,7 +47,7 @@ func NewMessageHandler(svc *service.MessageService, hub *ws.Hub) *MessageHandler
 // @Security     BearerAuth
 func (h *MessageHandler) WSConnect(c *gin.Context) {
 	userID := c.GetInt("user_id")
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return // upgrader уже написал 400
 	}
@@ -58,9 +67,8 @@ func (h *MessageHandler) WSConnect(c *gin.Context) {
 // @Router       /messages/{id} [post]
 func (h *MessageHandler) SendMessage(c *gin.Context) {
 	senderID := c.GetInt("user_id")
-	receiverID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid receiver id"})
+	receiverID, ok := parseIDParam(c, "id", "invalid receiver id")
+	if !ok {
 		return
 	}
 
@@ -100,19 +108,24 @@ func (h *MessageHandler) SendMessage(c *gin.Context) {
 // @Router       /messages/{id} [get]
 func (h *MessageHandler) GetHistory(c *gin.Context) {
 	userID := c.GetInt("user_id")
-	partnerID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	partnerID, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	if page < 1 { page = 1 }
-	if limit < 1 || limit > 200 { limit = 50 }
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 200 {
+		limit = 50
+	}
 
 	// помечаем прочитанными сообщения от партнёра
-	_ = h.svc.MarkRead(userID, partnerID)
+	if err := h.svc.MarkRead(userID, partnerID); err != nil {
+		logger.Log.Warn().Err(err).Int("user_id", userID).Int("partner_id", partnerID).Msg("failed to mark messages as read")
+	}
 
 	msgs, err := h.svc.GetHistory(userID, partnerID, page, limit)
 	if err != nil {

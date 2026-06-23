@@ -77,7 +77,7 @@ func main() {
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	likeHandler := handler.NewLikeHandler(likeSvc)
 	friendshipHandler := handler.NewFriendshipHandler(friendshipSvc)
-	messageHandler := handler.NewMessageHandler(messageSvc, wsHub)
+	messageHandler := handler.NewMessageHandler(messageSvc, wsHub, cfg.AllowedOrigins)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -86,7 +86,7 @@ func main() {
 	r.Use(handler.RateLimitMiddleware())
 	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"},
+		AllowOrigins:     cfg.AllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},

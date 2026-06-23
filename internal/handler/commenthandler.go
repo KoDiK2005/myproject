@@ -4,7 +4,6 @@ import (
 	"errors"
 	"myproject/internal/models"
 	"myproject/internal/service"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,9 +25,8 @@ func NewCommentHandler(svc *service.CommentService) *CommentHandler {
 // @Failure      400 {object} map[string]string
 // @Router       /posts/{id}/comments [get]
 func (h *CommentHandler) ListComments(c *gin.Context) {
-	postID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid post id"})
+	postID, ok := parseIDParam(c, "id", "invalid post id")
+	if !ok {
 		return
 	}
 	comments, err := h.svc.ListComments(postID)
@@ -51,9 +49,8 @@ func (h *CommentHandler) ListComments(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /posts/{id}/comments [post]
 func (h *CommentHandler) CreateComment(c *gin.Context) {
-	postID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid post id"})
+	postID, ok := parseIDParam(c, "id", "invalid post id")
+	if !ok {
 		return
 	}
 	var input models.CreateCommentInput
@@ -81,9 +78,8 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /comments/{id} [delete]
 func (h *CommentHandler) DeleteComment(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	id, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 	userID := c.GetInt("user_id")

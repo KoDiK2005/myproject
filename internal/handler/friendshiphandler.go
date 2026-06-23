@@ -2,7 +2,6 @@ package handler
 
 import (
 	"myproject/internal/service"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,9 +23,8 @@ func NewFriendshipHandler(svc *service.FriendshipService) *FriendshipHandler {
 // @Security     BearerAuth
 // @Router       /friends/request/{id} [post]
 func (h *FriendshipHandler) SendRequest(c *gin.Context) {
-	targetID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid user id"})
+	targetID, ok := parseIDParam(c, "id", "invalid user id")
+	if !ok {
 		return
 	}
 	myID := c.GetInt("user_id")
@@ -45,9 +43,8 @@ func (h *FriendshipHandler) SendRequest(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /friends/accept/{id} [post]
 func (h *FriendshipHandler) Accept(c *gin.Context) {
-	requesterID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid user id"})
+	requesterID, ok := parseIDParam(c, "id", "invalid user id")
+	if !ok {
 		return
 	}
 	myID := c.GetInt("user_id")
@@ -66,9 +63,8 @@ func (h *FriendshipHandler) Accept(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /friends/reject/{id} [post]
 func (h *FriendshipHandler) Reject(c *gin.Context) {
-	requesterID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid user id"})
+	requesterID, ok := parseIDParam(c, "id", "invalid user id")
+	if !ok {
 		return
 	}
 	myID := c.GetInt("user_id")
@@ -87,9 +83,8 @@ func (h *FriendshipHandler) Reject(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /friends/{id} [delete]
 func (h *FriendshipHandler) Remove(c *gin.Context) {
-	friendID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid user id"})
+	friendID, ok := parseIDParam(c, "id", "invalid user id")
+	if !ok {
 		return
 	}
 	myID := c.GetInt("user_id")
@@ -160,9 +155,8 @@ func (h *FriendshipHandler) GetOutgoingRequests(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /friends/status/{id} [get]
 func (h *FriendshipHandler) GetStatus(c *gin.Context) {
-	otherID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid user id"})
+	otherID, ok := parseIDParam(c, "id", "invalid user id")
+	if !ok {
 		return
 	}
 	myID := c.GetInt("user_id")

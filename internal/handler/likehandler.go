@@ -2,7 +2,6 @@ package handler
 
 import (
 	"myproject/internal/service"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,9 +24,8 @@ func NewLikeHandler(svc *service.LikeService) *LikeHandler {
 // @Security     BearerAuth
 // @Router       /posts/{id}/like [post]
 func (h *LikeHandler) LikePost(c *gin.Context) {
-	postID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid post id"})
+	postID, ok := parseIDParam(c, "id", "invalid post id")
+	if !ok {
 		return
 	}
 	userID := c.GetInt("user_id")
@@ -48,9 +46,8 @@ func (h *LikeHandler) LikePost(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /posts/{id}/like [delete]
 func (h *LikeHandler) UnlikePost(c *gin.Context) {
-	postID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid post id"})
+	postID, ok := parseIDParam(c, "id", "invalid post id")
+	if !ok {
 		return
 	}
 	userID := c.GetInt("user_id")
@@ -70,9 +67,8 @@ func (h *LikeHandler) UnlikePost(c *gin.Context) {
 // @Failure      400 {object} map[string]string
 // @Router       /posts/{id}/likes [get]
 func (h *LikeHandler) GetLikeCount(c *gin.Context) {
-	postID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid post id"})
+	postID, ok := parseIDParam(c, "id", "invalid post id")
+	if !ok {
 		return
 	}
 	count, err := h.svc.Count(postID)

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"myproject/internal/models"
 	"myproject/internal/service"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,24 +27,15 @@ func NewPostHandler(svc *service.PostService) *PostHandler {
 // @Failure      500 {object} map[string]string
 // @Router       /posts [get]
 func (h *PostHandler) ListPosts(c *gin.Context) {
-	pageStr := c.DefaultQuery("page", "1")
-	limitStr := c.DefaultQuery("limit", "10")
-
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		c.JSON(400, gin.H{"error": "invalid page"})
-		return
-	}
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit < 1 || limit > 100 {
-		c.JSON(400, gin.H{"error": "invalid limit"})
+	page, limit, ok := parsePagination(c, 10, 100)
+	if !ok {
 		return
 	}
 
 	search := c.Query("search")
 
 	var resp *models.PaginatedResponse
+	var err error
 	if search != "" {
 		resp, err = h.svc.SearchPosts(search, page, limit)
 	} else if userID := c.GetInt("user_id"); userID != 0 {
@@ -73,24 +63,13 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 // @Failure      500 {object} map[string]string
 // @Router       /users/{id}/posts [get]
 func (h *PostHandler) GetPostsByUser(c *gin.Context) {
-	userID, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid user id"})
+	userID, ok := parseIDParam(c, "id", "invalid user id")
+	if !ok {
 		return
 	}
 
-	pageStr := c.DefaultQuery("page", "1")
-	limitStr := c.DefaultQuery("limit", "10")
-
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		c.JSON(400, gin.H{"error": "invalid page"})
-		return
-	}
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit < 1 || limit > 100 {
-		c.JSON(400, gin.H{"error": "invalid limit"})
+	page, limit, ok := parsePagination(c, 10, 100)
+	if !ok {
 		return
 	}
 
@@ -112,9 +91,8 @@ func (h *PostHandler) GetPostsByUser(c *gin.Context) {
 // @Failure      404 {object} map[string]string
 // @Router       /posts/{id} [get]
 func (h *PostHandler) GetPost(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	id, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 	post, err := h.svc.GetPostByID(id)
@@ -167,9 +145,8 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /posts/{id} [put]
 func (h *PostHandler) UpdatePost(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	id, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 	var input models.UpdatePostInput
@@ -204,9 +181,8 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /posts/{id} [delete]
 func (h *PostHandler) DeletePost(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	id, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 	userID := c.GetInt("user_id")

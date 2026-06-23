@@ -8,7 +8,6 @@ import (
 	"myproject/internal/service"
 	"net/http"
 	"path/filepath"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,23 +31,14 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 // @Failure      500 {object} map[string]string
 // @Router       /users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	pageStr := c.DefaultQuery("page", "1")
-	limitStr := c.DefaultQuery("limit", "10")
-
-	page, err := strconv.Atoi(pageStr)
-	if err != nil || page < 1 {
-		c.JSON(400, gin.H{"error": "invalid page"})
-		return
-	}
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit < 1 || limit > 100 {
-		c.JSON(400, gin.H{"error": "invalid limit"})
+	page, limit, ok := parsePagination(c, 10, 100)
+	if !ok {
 		return
 	}
 
 	search := c.Query("search")
 	var resp *models.PaginatedResponse
+	var err error
 	if search != "" {
 		resp, err = h.svc.SearchUsers(search, page, limit)
 	} else {
@@ -70,9 +60,8 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 // @Router       /users/{id} [get]
 func (h *UserHandler) GetUser(c *gin.Context) {
 	// URL: /users/42 — берём последний сегмент пути
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	id, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 
@@ -123,14 +112,12 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	id, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 
-	if id != c.GetInt("user_id") {
-		c.JSON(403, gin.H{"error": "you can't delete someone else's account"})
+	if !requireOwnResource(c, id, "you can't delete someone else's account") {
 		return
 	}
 
@@ -161,15 +148,12 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Router       /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	var input models.UpdateUserInput
-	id, err := strconv.Atoi(c.Param("id"))
-
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	id, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 
-	if id != c.GetInt("user_id") {
-		c.JSON(403, gin.H{"error": "you can't update someone else's account"})
+	if !requireOwnResource(c, id, "you can't update someone else's account") {
 		return
 	}
 
@@ -205,14 +189,12 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /users/{id}/avatar [post]
 func (h *UserHandler) UploadAvatar(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid id"})
+	id, ok := parseIDParam(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 
-	if id != c.GetInt("user_id") {
-		c.JSON(403, gin.H{"error": "not your account"})
+	if !requireOwnResource(c, id, "not your account") {
 		return
 	}
 
