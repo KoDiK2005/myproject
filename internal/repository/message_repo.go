@@ -27,7 +27,10 @@ func (r *MessageRepo) Save(msg *models.Message) error {
 	).Scan(&msg.ID, &msg.CreatedAt)
 }
 
-// GetHistory — история сообщений между двумя юзерами, от старых к новым
+// GetHistory — история сообщений между двумя юзерами, от старых к новым.
+// page=1 — последние limit сообщений (а не самые старые).
+// WHERE через LEAST/GREATEST, чтобы попасть в idx_messages_pair; сортируем DESC под него же,
+// затем разворачиваем в памяти для хронологического порядка на выходе.
 func (r *MessageRepo) GetHistory(userA, userB, limit, offset int) ([]models.Message, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
@@ -35,12 +38,18 @@ func (r *MessageRepo) GetHistory(userA, userB, limit, offset int) ([]models.Mess
 	err := r.db.SelectContext(ctx, &msgs,
 		`SELECT id, sender_id, receiver_id, content, read_at, created_at
 		 FROM messages
-		 WHERE (sender_id = $1 AND receiver_id = $2)
-		    OR (sender_id = $2 AND receiver_id = $1)
-		 ORDER BY created_at ASC
+		 WHERE LEAST(sender_id, receiver_id) = LEAST($1, $2)
+		   AND GREATEST(sender_id, receiver_id) = GREATEST($1, $2)
+		 ORDER BY created_at DESC
 		 LIMIT $3 OFFSET $4`,
 		userA, userB, limit, offset)
-	return msgs, err
+	if err != nil {
+		return nil, err
+	}
+	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
+		msgs[i], msgs[j] = msgs[j], msgs[i]
+	}
+	return msgs, nil
 }
 
 // GetConversations — список всех чатов с последним сообщением
