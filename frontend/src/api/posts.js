@@ -42,7 +42,7 @@ export async function getPostsByUser(userId) {
   const res = await fetch(`${BASE_URL}/api/v1/users/${userId}/posts`, { headers })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Ошибка загрузки постов')
-  return data ?? []
+  return data?.data ?? []
 }
 
 export async function deletePost(id) {
