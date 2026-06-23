@@ -33,21 +33,47 @@ export async function sendMessage(userId, content) {
 }
 
 // WebSocket соединение — передаём токен в query param (браузер не даёт header для WS)
+// Переподключается при разрыве с экспоненциальной задержкой, пока вызывающий не вызовет close().
 export function connectWS(onMessage) {
-  const token = getAccessToken()
-  if (!token) return null
+  let closedByUser = false
+  let ws = null
+  let reconnectDelay = 1000
+  const maxReconnectDelay = 30000
 
-  const ws = new WebSocket(`${WS_URL}?token=${token}`)
+  function open() {
+    const token = getAccessToken()
+    if (!token) return
 
-  ws.onmessage = (e) => {
-    try {
-      const data = JSON.parse(e.data)
-      if (data.type === 'message' && data.payload) {
-        onMessage(data.payload)
-      }
-    } catch {}
+    ws = new WebSocket(`${WS_URL}?token=${token}`)
+
+    ws.onopen = () => {
+      reconnectDelay = 1000
+    }
+
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (data.type === 'message' && data.payload) {
+          onMessage(data.payload)
+        }
+      } catch {}
+    }
+
+    ws.onerror = () => {} // тихо, обработку делает onclose
+
+    ws.onclose = () => {
+      if (closedByUser) return
+      setTimeout(open, reconnectDelay)
+      reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay)
+    }
   }
 
-  ws.onerror = () => {} // тихо
-  return ws
+  open()
+
+  return {
+    close() {
+      closedByUser = true
+      ws?.close()
+    },
+  }
 }

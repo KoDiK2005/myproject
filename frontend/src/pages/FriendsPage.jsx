@@ -80,8 +80,8 @@ export default function FriendsPage() {
       <div className="friend-card">
         <Link to={`/users/${user.id}`} className="friend-info">
           <div className="friend-avatar">
-            {user.avatar_url
-              ? <img src={`http://localhost:8080${user.avatar_url}`} alt={user.name} />
+            {user.avatar
+              ? <img src={`http://localhost:8080${user.avatar}`} alt={user.name} />
               : <span className="avatar-placeholder">{user.name?.[0]?.toUpperCase()}</span>
             }
           </div>

@@ -160,8 +160,8 @@ export default function UserPage() {
 
       <div className="profile-card">
         <div className="profile-avatar">
-          {user.avatar_url
-            ? <img src={`http://localhost:8080${user.avatar_url}`} alt={user.name} className="avatar-img" />
+          {user.avatar
+            ? <img src={`http://localhost:8080${user.avatar}`} alt={user.name} className="avatar-img" />
             : <div className="avatar-placeholder-lg">{user.name?.[0]?.toUpperCase()}</div>
           }
         </div>

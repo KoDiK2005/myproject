@@ -119,8 +119,8 @@ export default function ChatPage() {
         {partner && (
           <div className="chat-partner">
             <div className="chat-partner-avatar">
-              {partner.avatar_url
-                ? <img src={`http://localhost:8080${partner.avatar_url}`} alt={partner.name} />
+              {partner.avatar
+                ? <img src={`http://localhost:8080${partner.avatar}`} alt={partner.name} />
                 : <span>{partner.name?.[0]?.toUpperCase()}</span>
               }
             </div>
