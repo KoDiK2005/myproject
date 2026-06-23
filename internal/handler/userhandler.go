@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"myproject/internal/logger"
 	"myproject/internal/models"
 	"myproject/internal/service"
 	"net/http"
@@ -13,12 +14,13 @@ import (
 )
 
 type UserHandler struct {
-	svc        *service.UserService
-	uploadPath string // папка для аватаров, например "./uploads/avatars"
+	svc            *service.UserService
+	emailVerifySvc *service.EmailVerificationService
+	uploadPath     string // папка для аватаров, например "./uploads/avatars"
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
-	return &UserHandler{svc: svc, uploadPath: "./uploads/avatars"}
+func NewUserHandler(svc *service.UserService, emailVerifySvc *service.EmailVerificationService) *UserHandler {
+	return &UserHandler{svc: svc, emailVerifySvc: emailVerifySvc, uploadPath: "./uploads/avatars"}
 }
 
 // ListUsers godoc
@@ -98,6 +100,12 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		}
 		return
 	}
+
+	// письмо подтверждения — best-effort, регистрацию не роняем при сбое отправки
+	if err := h.emailVerifySvc.SendVerification(user.ID, user.Email); err != nil {
+		logger.Log.Warn().Err(err).Int("user_id", user.ID).Msg("failed to send verification email")
+	}
+
 	c.JSON(201, user)
 }
 

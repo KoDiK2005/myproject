@@ -27,7 +27,7 @@ func (r *UserRepo) GetByID(id int) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 	var user models.User
-	err := r.db.GetContext(ctx, &user, "SELECT id, name, email, avatar FROM users WHERE id = $1", id)
+	err := r.db.GetContext(ctx, &user, "SELECT id, name, email, avatar, email_verified FROM users WHERE id = $1", id)
 	return &user, err
 }
 
@@ -35,7 +35,7 @@ func (r *UserRepo) GetAll(limit, offset int) ([]models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 	var users []models.User
-	err := r.db.SelectContext(ctx, &users, "SELECT id, name, email, avatar FROM users LIMIT $1 OFFSET $2", limit, offset)
+	err := r.db.SelectContext(ctx, &users, "SELECT id, name, email, avatar, email_verified FROM users LIMIT $1 OFFSET $2", limit, offset)
 	return users, err
 }
 
@@ -60,9 +60,18 @@ func (r *UserRepo) Update(id int, name, email string) (*models.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 	var user models.User
-	query := "UPDATE users SET name=$1, email=$2 WHERE id=$3 RETURNING id, name, email, avatar"
-	err := r.db.QueryRowxContext(ctx, query, name, email, id).Scan(&user.ID, &user.Name, &user.Email, &user.Avatar)
+	query := "UPDATE users SET name=$1, email=$2 WHERE id=$3 RETURNING id, name, email, avatar, email_verified"
+	err := r.db.QueryRowxContext(ctx, query, name, email, id).
+		Scan(&user.ID, &user.Name, &user.Email, &user.Avatar, &user.EmailVerified)
 	return &user, err
+}
+
+// MarkEmailVerified — помечает email юзера подтверждённым
+func (r *UserRepo) MarkEmailVerified(userID int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+	_, err := r.db.ExecContext(ctx, "UPDATE users SET email_verified = true WHERE id = $1", userID)
+	return err
 }
 
 // Search — поиск юзеров по имени (ILIKE, pg_trgm уже есть)
@@ -76,7 +85,7 @@ func (r *UserRepo) Search(query string, limit, offset int) ([]models.User, int, 
 	}
 	var rows []row
 	err := r.db.SelectContext(ctx, &rows,
-		`SELECT id, name, email, avatar, COUNT(*) OVER() AS total
+		`SELECT id, name, email, avatar, email_verified, COUNT(*) OVER() AS total
 		 FROM users
 		 WHERE name ILIKE $1
 		 ORDER BY name

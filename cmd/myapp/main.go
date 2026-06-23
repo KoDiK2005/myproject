@@ -20,6 +20,7 @@ import (
 	"myproject/internal/config"
 	"myproject/internal/handler"
 	"myproject/internal/logger"
+	"myproject/internal/mailer"
 	"myproject/internal/repository"
 	"myproject/internal/service"
 	"myproject/internal/ws"
@@ -59,6 +60,7 @@ func main() {
 	likeRepo := repository.NewLikeRepo(db)
 	friendshipRepo := repository.NewFriendshipRepo(db)
 	messageRepo := repository.NewMessageRepo(db)
+	emailVerificationRepo := repository.NewEmailVerificationRepo(db)
 
 	userSvc := service.NewUserService(userRepo)
 	postSvc := service.NewPostService(postRepo)
@@ -68,12 +70,25 @@ func main() {
 	friendshipSvc := service.NewFriendshipService(friendshipRepo)
 	messageSvc := service.NewMessageService(messageRepo)
 
+	// если SMTP не настроен (локальная разработка) — письма верификации просто пишутся в лог
+	var emailSender service.EmailSender
+	if cfg.SMTPHost != "" {
+		emailSender = &mailer.SMTPSender{
+			Host: cfg.SMTPHost, Port: cfg.SMTPPort,
+			Username: cfg.SMTPUser, Password: cfg.SMTPPassword, From: cfg.SMTPFrom,
+		}
+	} else {
+		emailSender = mailer.ConsoleSender{}
+	}
+	emailVerifySvc := service.NewEmailVerificationService(emailVerificationRepo, userRepo, emailSender, cfg.FrontendURL)
+
 	wsHub := ws.NewHub()
 	go wsHub.Run() // запускаем горутину-диспетчер
 
-	userHandler := handler.NewUserHandler(userSvc)
+	userHandler := handler.NewUserHandler(userSvc, emailVerifySvc)
 	postHandler := handler.NewPostHandler(postSvc)
 	authHandler := handler.NewAuthHandler(userSvc, refreshTokenSvc, cfg.JWTSecret)
+	emailVerificationHandler := handler.NewEmailVerificationHandler(emailVerifySvc, userSvc)
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	likeHandler := handler.NewLikeHandler(likeSvc)
 	friendshipHandler := handler.NewFriendshipHandler(friendshipSvc)
@@ -109,6 +124,8 @@ func main() {
 	r.POST("/auth/refresh", authHandler.Refresh)
 	r.POST("/auth/logout", authHandler.Logout)
 	r.POST("/auth/logout-all", handler.AuthMiddleware(cfg.JWTSecret), authHandler.LogoutAll)
+	r.GET("/auth/verify-email", emailVerificationHandler.VerifyEmail)
+	r.POST("/auth/resend-verification", handler.AuthMiddleware(cfg.JWTSecret), emailVerificationHandler.ResendVerification)
 
 	// WebSocket — авторизация через query param ?token=...
 	r.GET("/ws", handler.AuthMiddleware(cfg.JWTSecret), messageHandler.WSConnect)

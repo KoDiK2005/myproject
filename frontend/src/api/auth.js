@@ -110,3 +110,17 @@ export async function logoutAll() {
   await apiFetch(`${BASE_URL}/auth/logout-all`, { method: 'POST', credentials: 'include' }).catch(() => {})
   clearTokens()
 }
+
+export async function verifyEmail(token) {
+  const res = await fetch(`${BASE_URL}/auth/verify-email?token=${encodeURIComponent(token)}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Не удалось подтвердить email')
+  return data
+}
+
+export async function resendVerification() {
+  const res = await apiFetch(`${BASE_URL}/auth/resend-verification`, { method: 'POST' })
+  if (res.status === 204) return
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Не удалось отправить письмо')
+}

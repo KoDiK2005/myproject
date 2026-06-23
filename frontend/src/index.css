@@ -146,6 +146,20 @@ button[type='submit']:disabled {
   color: #fff;
 }
 
+.verify-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  color: #fbbf24;
+}
+
 .profile-security {
   margin-top: 2rem;
   padding-top: 1.5rem;

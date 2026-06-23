@@ -19,6 +19,7 @@ type UserRepository interface {
 	Update(id int, name, email string) (*models.User, error)
 	GetByEmail(email string) (*models.User, error)
 	UpdateAvatar(id int, path string) error
+	MarkEmailVerified(userID int) error
 }
 
 type UserService struct {

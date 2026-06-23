@@ -7,11 +7,12 @@
 **Backend**
 - **Go** + **Gin** — HTTP фреймворк
 - **PostgreSQL** + **sqlx** — база данных
-- **JWT** — авторизация (access 15мин + refresh 7 дней с ротацией)
+- **JWT** — авторизация (access 15мин в заголовке + refresh 7 дней в httpOnly cookie, ротация при каждом обновлении)
 - **gorilla/websocket** — реалтайм чат
 - **zerolog** — структурированные логи
 - **Prometheus** — метрики
 - **Swagger** — документация (`/swagger/index.html`)
+- **Email-верификация** — SMTP или вывод письма в лог, если SMTP не настроен (для разработки)
 
 **Frontend**
 - **React 19** + **Vite**
@@ -39,21 +40,36 @@ for f in migrations/*.sql; do psql $DATABASE_URL -f $f; done
 
 ## Переменные окружения
 
-| Переменная      | Описание                              | Пример                                                    |
-|-----------------|----------------------------------------|-----------------------------------------------------------|
-| DATABASE_URL    | Строка подключения к БД               | postgres://postgres:password@db:5432/mydb?sslmode=disable |
-| JWT_SECRET      | Секрет для JWT токенов                | supersecret                                               |
-| PORT            | Порт сервера                          | 8080                                                      |
-| ALLOWED_ORIGINS | CORS + WebSocket origin (через запятую) | http://localhost:3000,http://localhost:5173              |
+| Переменная      | Описание                                              | Пример                                                    |
+|-----------------|--------------------------------------------------------|-----------------------------------------------------------|
+| DATABASE_URL    | Строка подключения к БД                               | postgres://postgres:password@db:5432/mydb?sslmode=disable |
+| JWT_SECRET      | Секрет для JWT токенов                                | supersecret                                               |
+| PORT            | Порт сервера                                          | 8080                                                      |
+| ALLOWED_ORIGINS | CORS + WebSocket origin (через запятую)               | http://localhost:3000,http://localhost:5173                |
+| FRONTEND_URL    | Куда ведёт ссылка в письме подтверждения email        | http://localhost:5173 (дефолт, если не задано)            |
+| SMTP_HOST       | SMTP-сервер для отправки писем. Пусто → письма пишутся в лог | smtp.gmail.com                                       |
+| SMTP_PORT       | Порт SMTP                                             | 587                                                        |
+| SMTP_USER       | Логин SMTP                                            | bot@gmail.com                                              |
+| SMTP_PASSWORD   | Пароль/app-password SMTP                              | ...                                                        |
+| SMTP_FROM       | From-адрес в письмах                                  | noreply@myproject.local                                    |
+
+**Безопасность:**
+- Refresh-токен лежит в `HttpOnly` cookie (`Path=/auth`), недоступной для JS — не выживет при XSS.
+- На `/auth/login` отдельный жёсткий rate-limit (5 попыток/мин на IP) против брутфорса пароля.
+- JWT принимается только с алгоритмом HS256 (защита от algorithm confusion).
+- `/auth/logout-all` — отозвать все refresh-токены сразу (если аккаунт скомпрометирован).
 
 ## Эндпоинты
 
 ### Auth
-| Метод | URL           | Описание                      |
-|-------|---------------|-------------------------------|
-| POST  | /auth/login   | Логин, возвращает оба токена  |
-| POST  | /auth/refresh | Обновить токены (ротация)     |
-| POST  | /auth/logout  | Отозвать refresh token        |
+| Метод | URL                       | Auth | Описание                                                    |
+|-------|---------------------------|------|---------------------------------------------------------------|
+| POST  | /auth/login               | —    | Логин: access token в теле, refresh — в httpOnly cookie       |
+| POST  | /auth/refresh             | —    | Обновить access token (refresh берётся из cookie, ротация)    |
+| POST  | /auth/logout              | —    | Отозвать текущий refresh token, очистить cookie                |
+| POST  | /auth/logout-all          | ✓    | Отозвать все refresh-токены юзера (выход со всех устройств)   |
+| GET   | /auth/verify-email        | —    | Подтвердить email по токену из письма (`?token=...`)          |
+| POST  | /auth/resend-verification | ✓    | Отправить письмо подтверждения повторно                        |
 
 ### WebSocket
 | URL                  | Auth | Описание                              |
@@ -61,24 +77,24 @@ for f in migrations/*.sql; do psql $DATABASE_URL -f $f; done
 | GET /ws?token=...    | ✓    | WS соединение для входящих сообщений  |
 
 ### Users
-| Метод  | URL                      | Auth | Описание                             |
-|--------|--------------------------|------|--------------------------------------|
-| GET    | /api/v1/users            | —    | Список / поиск (`?search=имя`)       |
-| POST   | /api/v1/users            | —    | Регистрация                          |
-| GET    | /api/v1/users/:id        | —    | Профиль пользователя                 |
-| PUT    | /api/v1/users/:id        | ✓    | Обновить себя                        |
-| DELETE | /api/v1/users/:id        | ✓    | Удалить себя                         |
-| POST   | /api/v1/users/:id/avatar | ✓    | Загрузить аватар (jpg/png, макс 2MB) |
-| GET    | /api/v1/users/:id/posts  | —    | Посты пользователя (с учётом дружбы) |
+| Метод  | URL                      | Auth | Описание                                          |
+|--------|--------------------------|------|----------------------------------------------------|
+| GET    | /api/v1/users            | —    | Список / поиск (`?search=имя`)                    |
+| POST   | /api/v1/users            | —    | Регистрация (отправляет письмо подтверждения)     |
+| GET    | /api/v1/users/:id        | —    | Профиль пользователя (включает `email_verified`)  |
+| PUT    | /api/v1/users/:id        | ✓    | Обновить себя                                     |
+| DELETE | /api/v1/users/:id        | ✓    | Удалить себя                                      |
+| POST   | /api/v1/users/:id/avatar | ✓    | Загрузить аватар (jpg/png, макс 2MB)              |
+| GET    | /api/v1/users/:id/posts  | optional | Посты пользователя (с учётом дружбы и видимости) |
 
 ### Posts
-| Метод  | URL               | Auth    | Описание                                               |
-|--------|-------------------|---------|--------------------------------------------------------|
-| GET    | /api/v1/posts     | optional| Лента: гость — публичные, авторизованный — персональная|
-| POST   | /api/v1/posts     | ✓       | Создать пост (`visibility: public\|friends`)           |
-| GET    | /api/v1/posts/:id | —       | Получить пост                                          |
-| PUT    | /api/v1/posts/:id | ✓       | Обновить свой пост                                     |
-| DELETE | /api/v1/posts/:id | ✓       | Удалить свой пост                                      |
+| Метод  | URL               | Auth    | Описание                                                          |
+|--------|-------------------|---------|--------------------------------------------------------------------|
+| GET    | /api/v1/posts     | optional| Лента: гость — публичные, авторизованный — персональная           |
+| POST   | /api/v1/posts     | ✓       | Создать пост (`visibility: public\|friends`)                      |
+| GET    | /api/v1/posts/:id | optional| Получить пост (friends-only — только автору/другу, иначе 404)     |
+| PUT    | /api/v1/posts/:id | ✓       | Обновить свой пост                                                 |
+| DELETE | /api/v1/posts/:id | ✓       | Удалить свой пост                                                  |
 
 ### Дружба (только взаимная, без подписок)
 | Метод  | URL                               | Auth | Описание               |
@@ -100,18 +116,18 @@ for f in migrations/*.sql; do psql $DATABASE_URL -f $f; done
 | POST  | /api/v1/messages/:id | ✓    | Отправить сообщение (только другу)|
 
 ### Comments
-| Метод  | URL                        | Auth | Описание                 |
-|--------|----------------------------|------|--------------------------|
-| GET    | /api/v1/posts/:id/comments | —    | Комментарии к посту      |
-| POST   | /api/v1/posts/:id/comments | ✓    | Добавить комментарий     |
-| DELETE | /api/v1/comments/:id       | ✓    | Удалить свой комментарий |
+| Метод  | URL                        | Auth     | Описание                                                    |
+|--------|----------------------------|----------|----------------------------------------------------------------|
+| GET    | /api/v1/posts/:id/comments | optional | Комментарии к посту, пагинация (`page`, `limit`, по умолч. 20) |
+| POST   | /api/v1/posts/:id/comments | ✓        | Добавить комментарий (виден пост — может комментировать)       |
+| DELETE | /api/v1/comments/:id       | ✓        | Удалить свой комментарий                                       |
 
 ### Likes
-| Метод  | URL                     | Auth | Описание      |
-|--------|-------------------------|------|---------------|
-| GET    | /api/v1/posts/:id/likes | —    | Кол-во лайков |
-| POST   | /api/v1/posts/:id/like  | ✓    | Лайкнуть      |
-| DELETE | /api/v1/posts/:id/like  | ✓    | Убрать лайк   |
+| Метод  | URL                     | Auth     | Описание                                            |
+|--------|-------------------------|----------|--------------------------------------------------------|
+| GET    | /api/v1/posts/:id/likes | optional | `{count, liked}` — кол-во лайков и лайкнул ли текущий юзер |
+| POST   | /api/v1/posts/:id/like  | ✓        | Лайкнуть                                            |
+| DELETE | /api/v1/posts/:id/like  | ✓        | Убрать лайк                                         |
 
 ### Системные
 | Метод | URL           | Описание                   |
@@ -122,16 +138,17 @@ for f in migrations/*.sql; do psql $DATABASE_URL -f $f; done
 
 ## Фронт — страницы
 
-| Путь           | Доступ | Описание                                    |
-|----------------|--------|---------------------------------------------|
-| /              | ✓      | Лента постов, создание поста                |
-| /people        | ✓      | Поиск людей по имени                        |
-| /friends       | ✓      | Друзья, входящие/исходящие заявки           |
-| /messages      | ✓      | Список переписок                            |
-| /messages/:id  | ✓      | Чат (реалтайм WS)                           |
-| /profile       | ✓      | Свой профиль, редактирование, аватар        |
-| /users/:id     | —      | Профиль другого юзера + кнопка дружбы      |
-| /posts/:id     | ✓      | Пост с комментариями и лайками              |
+| Путь           | Доступ | Описание                                                |
+|----------------|--------|------------------------------------------------------------|
+| /              | ✓      | Лента постов, создание поста, лайк прямо с карточки        |
+| /people        | ✓      | Поиск людей по имени                                        |
+| /friends       | ✓      | Друзья, входящие/исходящие заявки                           |
+| /messages      | ✓      | Список переписок                                            |
+| /messages/:id  | ✓      | Чат (реалтайм WS, авто-переподключение)                     |
+| /profile       | ✓      | Профиль, аватар, баннер подтверждения email, выход со всех устройств |
+| /users/:id     | —      | Профиль другого юзера + кнопка дружбы                       |
+| /posts/:id     | ✓      | Пост с редактированием, лайком, пагинацией комментариев     |
+| /verify-email  | —      | Подтверждение email по ссылке из письма                    |
 
 ## Тесты
 
@@ -139,7 +156,7 @@ for f in migrations/*.sql; do psql $DATABASE_URL -f $f; done
 go test ./...
 ```
 
-Покрыто: PostService, UserService, CommentService, LikeService + HTTP-хендлеры (посты, авторизация).
+Покрыто: PostService (включая видимость friends-only), UserService, CommentService, LikeService, EmailVerificationService, RefreshTokenService + HTTP-хендлеры (посты, авторизация, refresh-cookie ротация, logout-all).
 
 ## Миграции
 
@@ -157,6 +174,7 @@ go test ./...
 011 — friendships
 012 — posts.visibility (public|friends)
 013 — messages + индексы
+014 — email_verified + email_verification_tokens
 ```
 
 ## Архитектура
@@ -169,14 +187,15 @@ internal/
   service/       — бизнес-логика, sentinel errors
   repository/    — работа с БД (sqlx, context timeouts)
   models/        — структуры данных
+  mailer/        — отправка писем (SMTP или вывод в лог для dev)
   ws/            — WebSocket hub (горутина-диспетчер)
   logger/        — zerolog
-migrations/      — SQL миграции (001–013)
+migrations/      — SQL миграции (001–014)
 docs/            — сгенерированный Swagger
 frontend/        — React приложение (Vite)
   src/
     api/         — fetch-обёртки (auth, posts, friends, messages...)
-    pages/       — страницы
+    pages/       — страницы (включая VerifyEmailPage)
     components/  — PostCard, Toast
     hooks/       — useFriendBadge
 ```

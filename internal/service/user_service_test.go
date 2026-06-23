@@ -71,6 +71,16 @@ func (m *mockUserRepo) UpdateAvatar(id int, path string) error {
 	return errors.New("not found")
 }
 
+func (m *mockUserRepo) MarkEmailVerified(userID int) error {
+	for i, u := range m.users {
+		if u.ID == userID {
+			m.users[i].EmailVerified = true
+			return nil
+		}
+	}
+	return errors.New("not found")
+}
+
 func TestCreateUser(t *testing.T) {
 	repo := &mockUserRepo{}
 	svc := NewUserService(repo)

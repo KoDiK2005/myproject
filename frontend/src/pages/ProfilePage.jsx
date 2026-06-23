@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { getCurrentUserId, logout, logoutAll } from '../api/auth'
+import { getCurrentUserId, logout, logoutAll, resendVerification } from '../api/auth'
 import { getUser, updateUser, uploadAvatar } from '../api/users'
 import { useToast, ToastContainer } from '../components/Toast'
 
@@ -16,6 +16,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [resending, setResending] = useState(false)
 
   const userId = getCurrentUserId()
 
@@ -74,6 +75,18 @@ export default function ProfilePage() {
     navigate('/login')
   }
 
+  async function handleResendVerification() {
+    setResending(true)
+    try {
+      await resendVerification()
+      showToast('Письмо отправлено — проверь почту', 'success')
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setResending(false)
+    }
+  }
+
   if (loading) return <div className="auth-container"><p>Загружаем профиль...</p></div>
 
   return (
@@ -87,6 +100,15 @@ export default function ProfilePage() {
 
       <div className="profile-container">
         <h1>Профиль</h1>
+
+        {user && !user.email_verified && (
+          <div className="verify-banner">
+            <span>Email не подтверждён — проверь почту или запроси письмо ещё раз.</span>
+            <button type="button" className="btn-secondary" onClick={handleResendVerification} disabled={resending}>
+              {resending ? 'Отправляем...' : 'Отправить письмо'}
+            </button>
+          </div>
+        )}
 
         <div className="avatar-section">
           <div className="avatar-wrapper" onClick={() => fileInputRef.current.click()}>

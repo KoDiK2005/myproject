@@ -13,6 +13,16 @@ type Config struct {
 	Port           string
 	JWTSecret      string
 	AllowedOrigins []string
+
+	// SMTP — если SMTPHost пустой, письма верификации просто пишутся в лог (для dev без почтового сервера)
+	SMTPHost     string
+	SMTPPort     string
+	SMTPUser     string
+	SMTPPassword string
+	SMTPFrom     string
+
+	// FrontendURL — куда вести ссылку подтверждения email
+	FrontendURL string
 }
 
 func Load() (Config, error) {
@@ -24,6 +34,16 @@ func Load() (Config, error) {
 		Port:           os.Getenv("PORT"),
 		JWTSecret:      os.Getenv("JWT_SECRET"),
 		AllowedOrigins: parseOrigins(os.Getenv("ALLOWED_ORIGINS")),
+		SMTPHost:       os.Getenv("SMTP_HOST"),
+		SMTPPort:       os.Getenv("SMTP_PORT"),
+		SMTPUser:       os.Getenv("SMTP_USER"),
+		SMTPPassword:   os.Getenv("SMTP_PASSWORD"),
+		SMTPFrom:       os.Getenv("SMTP_FROM"),
+		FrontendURL:    os.Getenv("FRONTEND_URL"),
+	}
+
+	if cfg.FrontendURL == "" {
+		cfg.FrontendURL = "http://localhost:5173"
 	}
 
 	if cfg.JWTSecret == "" {
