@@ -12,6 +12,7 @@ type RefreshTokenRepository interface {
 	Create(token *models.RefreshToken) error
 	GetByToken(token string) (*models.RefreshToken, error)
 	Revoke(token string) error
+	RevokeAllForUser(userID int) error
 }
 
 type RefreshTokenService struct {
@@ -54,4 +55,11 @@ func (s *RefreshTokenService) ValidateToken(token string) (*models.RefreshToken,
 
 func (s *RefreshTokenService) RevokeToken(token string) error {
 	return s.repo.Revoke(token)
+}
+
+// RevokeAllSessions — отзывает все refresh-токены юзера (выход со всех устройств,
+// например при компрометации аккаунта). Текущий access token продолжит
+// работать до истечения (15 мин), но обновить его уже не получится.
+func (s *RefreshTokenService) RevokeAllSessions(userID int) error {
+	return s.repo.RevokeAllForUser(userID)
 }

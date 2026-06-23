@@ -146,6 +146,22 @@ button[type='submit']:disabled {
   color: #fff;
 }
 
+.profile-security {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #2e2e38;
+}
+
+.profile-security h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.profile-security .feed-status {
+  margin-bottom: 0.8rem;
+  font-size: 0.85rem;
+}
+
 .avatar-section {
   display: flex;
   flex-direction: column;

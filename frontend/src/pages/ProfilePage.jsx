@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { getCurrentUserId, logout } from '../api/auth'
+import { getCurrentUserId, logout, logoutAll } from '../api/auth'
 import { getUser, updateUser, uploadAvatar } from '../api/users'
 import { useToast, ToastContainer } from '../components/Toast'
 
@@ -68,6 +68,12 @@ export default function ProfilePage() {
     navigate('/login')
   }
 
+  async function handleLogoutAll() {
+    if (!confirm('Завершить все сессии на всех устройствах?')) return
+    await logoutAll()
+    navigate('/login')
+  }
+
   if (loading) return <div className="auth-container"><p>Загружаем профиль...</p></div>
 
   return (
@@ -130,6 +136,14 @@ export default function ProfilePage() {
             {saving ? 'Сохраняем...' : 'Сохранить'}
           </button>
         </form>
+
+        <div className="profile-security">
+          <h2>Безопасность</h2>
+          <p className="feed-status">Если подозреваешь, что аккаунт мог быть скомпрометирован — завершит все активные сессии на всех устройствах.</p>
+          <button type="button" className="btn-danger" onClick={handleLogoutAll}>
+            Выйти со всех устройств
+          </button>
+        </div>
       </div>
     </div>
   )

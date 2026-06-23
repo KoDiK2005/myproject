@@ -91,6 +91,21 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	c.Status(204)
 }
 
+// LogoutAll godoc
+// @Summary      Выйти со всех устройств (отозвать все refresh-токены)
+// @Tags         auth
+// @Success      204
+// @Security     BearerAuth
+// @Router       /auth/logout-all [post]
+func (h *AuthHandler) LogoutAll(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	if err := h.refreshSvc.RevokeAllSessions(userID); err != nil {
+		c.JSON(500, gin.H{"error": "failed to revoke sessions"})
+		return
+	}
+	c.Status(204)
+}
+
 // Login godoc
 // @Summary      Получить JWT токен
 // @Tags         auth

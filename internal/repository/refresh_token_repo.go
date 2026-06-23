@@ -32,3 +32,9 @@ func (r *RefreshTokenRepo) Revoke(token string) error {
 	_, err := r.db.Exec("UPDATE refresh_tokens SET revoked = true WHERE token = $1", token)
 	return err
 }
+
+// RevokeAllForUser — отзывает все активные refresh-токены юзера (выход со всех устройств)
+func (r *RefreshTokenRepo) RevokeAllForUser(userID int) error {
+	_, err := r.db.Exec("UPDATE refresh_tokens SET revoked = true WHERE user_id = $1 AND revoked = false", userID)
+	return err
+}

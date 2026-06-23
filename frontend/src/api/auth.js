@@ -110,3 +110,9 @@ export async function logout() {
   }
   clearTokens()
 }
+
+// выйти со всех устройств — отзывает все refresh-токены (например при компрометации аккаунта)
+export async function logoutAll() {
+  await apiFetch(`${BASE_URL}/auth/logout-all`, { method: 'POST' }).catch(() => {})
+  clearTokens()
+}

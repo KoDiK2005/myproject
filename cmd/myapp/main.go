@@ -108,6 +108,7 @@ func main() {
 	r.POST("/auth/login", handler.LoginRateLimitMiddleware(), authHandler.Login)
 	r.POST("/auth/refresh", authHandler.Refresh)
 	r.POST("/auth/logout", authHandler.Logout)
+	r.POST("/auth/logout-all", handler.AuthMiddleware(cfg.JWTSecret), authHandler.LogoutAll)
 
 	// WebSocket — авторизация через query param ?token=...
 	r.GET("/ws", handler.AuthMiddleware(cfg.JWTSecret), messageHandler.WSConnect)
