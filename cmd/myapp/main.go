@@ -105,7 +105,7 @@ func main() {
 	})
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	r.POST("/auth/login", authHandler.Login)
+	r.POST("/auth/login", handler.LoginRateLimitMiddleware(), authHandler.Login)
 	r.POST("/auth/refresh", authHandler.Refresh)
 	r.POST("/auth/logout", authHandler.Logout)
 

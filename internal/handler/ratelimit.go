@@ -74,3 +74,20 @@ func RateLimitMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// loginLimiter — отдельный, гораздо более жёсткий лимит для /auth/login,
+// чтобы общий лимит (10 rps) не позволял брутфорсить пароль.
+// 5 попыток в минуту на IP, burst 5.
+var loginLimiter = newIPLimiter(rate.Limit(5.0/60.0), 5)
+
+func LoginRateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		if !loginLimiter.get(ip).Allow() {
+			logger.Log.Warn().Str("ip", ip).Msg("login rate limit exceeded")
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many login attempts, try again later"})
+			return
+		}
+		c.Next()
+	}
+}

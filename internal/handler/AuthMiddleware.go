@@ -24,7 +24,7 @@ func OptionalAuthMiddleware(secret string) gin.HandlerFunc {
 		}
 		token, err := jwt.Parse(parts[1], func(token *jwt.Token) (interface{}, error) {
 			return []byte(secret), nil
-		})
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 		if err != nil || !token.Valid {
 			c.Next()
 			return
@@ -58,7 +58,7 @@ func AuthMiddleware(secret string) gin.HandlerFunc {
 
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 			return []byte(secret), nil
-		})
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 		if err != nil || !token.Valid {
 			c.JSON(401, gin.H{"error": "invalid token"})
 			c.Abort()
