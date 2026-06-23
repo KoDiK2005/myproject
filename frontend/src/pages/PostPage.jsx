@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { getCurrentUserId } from '../api/auth'
 import { getComments, createComment, deleteComment } from '../api/comments'
 import { getLikeCount, likePost, unlikePost } from '../api/likes'
-import { getPost } from '../api/posts'
+import { getPost, updatePost } from '../api/posts'
 import { useToast, ToastContainer } from '../components/Toast'
 
 export default function PostPage() {
@@ -20,6 +20,10 @@ export default function PostPage() {
   const [commentBody, setCommentBody] = useState('')
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState({ title: '', body: '', visibility: 'public' })
+  const [savingEdit, setSavingEdit] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -72,6 +76,27 @@ export default function PostPage() {
     }
   }
 
+  function startEditing() {
+    setEditForm({ title: post.title, body: post.body, visibility: post.visibility })
+    setEditing(true)
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault()
+    if (!editForm.title.trim() || !editForm.body.trim()) return
+    setSavingEdit(true)
+    try {
+      const updated = await updatePost(postId, editForm.title, editForm.body, editForm.visibility)
+      setPost(updated)
+      setEditing(false)
+      showToast('Пост обновлён', 'success')
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   async function handleDeleteComment(commentId) {
     try {
       await deleteComment(commentId)
@@ -95,9 +120,58 @@ export default function PostPage() {
       </nav>
 
       <div className="post-full">
-        <h1 className="post-full-title">{post.title}</h1>
-        <p className="post-full-meta">{post.author_name || `Автор #${post.user_id}`}</p>
-        <p className="post-full-body">{post.body}</p>
+        {editing ? (
+          <form onSubmit={handleSaveEdit} className="create-form">
+            <input
+              type="text"
+              value={editForm.title}
+              onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+              required
+              maxLength={200}
+            />
+            <textarea
+              value={editForm.body}
+              onChange={e => setEditForm({ ...editForm, body: e.target.value })}
+              required
+              rows={6}
+            />
+            <div className="visibility-toggle">
+              <button
+                type="button"
+                className={`vis-btn ${editForm.visibility === 'public' ? 'active' : ''}`}
+                onClick={() => setEditForm({ ...editForm, visibility: 'public' })}
+              >
+                🌍 Публично
+              </button>
+              <button
+                type="button"
+                className={`vis-btn ${editForm.visibility === 'friends' ? 'active' : ''}`}
+                onClick={() => setEditForm({ ...editForm, visibility: 'friends' })}
+              >
+                🔒 Только друзья
+              </button>
+            </div>
+            <div className="friend-action-group">
+              <button type="submit" disabled={savingEdit}>
+                {savingEdit ? 'Сохраняем...' : 'Сохранить'}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setEditing(false)}>
+                Отмена
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <div className="post-header">
+              <h1 className="post-full-title">{post.title}</h1>
+              {post.user_id === currentUserId && (
+                <button className="post-delete-btn" onClick={startEditing} title="Редактировать">✎</button>
+              )}
+            </div>
+            <p className="post-full-meta">{post.author_name || `Автор #${post.user_id}`}</p>
+            <p className="post-full-body">{post.body}</p>
+          </>
+        )}
 
         <div className="like-section">
           <button className={`like-btn ${liked ? 'liked' : ''}`} onClick={handleLike}>

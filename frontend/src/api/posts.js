@@ -47,6 +47,18 @@ export async function getPostsByUser(userId) {
   return data?.data ?? []
 }
 
+// visibility: 'public' | 'friends'
+export async function updatePost(id, title, body, visibility = 'public') {
+  const res = await apiFetch(`${BASE_URL}/api/v1/posts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, body, visibility }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Ошибка обновления поста')
+  return data
+}
+
 export async function deletePost(id) {
   const res = await apiFetch(`${BASE_URL}/api/v1/posts/${id}`, { method: 'DELETE' })
   if (res.status === 204) return
