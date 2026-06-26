@@ -87,6 +87,10 @@ func (m *mockPostRepo) IsFriend(userA, userB int) (bool, error) {
 	return false, nil
 }
 
+func (m *mockPostRepo) IsBlocked(userA, userB int) (bool, error) {
+	return false, nil
+}
+
 // setupPostRouter — gin роутер с хэндлером постов
 func setupPostRouter(repo service.PostRepository) *gin.Engine {
 	gin.SetMode(gin.TestMode)

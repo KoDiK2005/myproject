@@ -8,9 +8,10 @@ import {
   rejectFriendRequest,
   removeFriend,
 } from '../api/friends'
+import { getBlockedUsers, unblockUser } from '../api/blocks'
 import { useToast, ToastContainer } from '../components/Toast'
 
-// вкладки: friends | incoming | outgoing
+// вкладки: friends | incoming | outgoing | blocked
 export default function FriendsPage() {
   const navigate = useNavigate()
   const { toasts, showToast } = useToast()
@@ -19,6 +20,7 @@ export default function FriendsPage() {
   const [friends, setFriends] = useState([])
   const [incoming, setIncoming] = useState([])
   const [outgoing, setOutgoing] = useState([])
+  const [blocked, setBlocked] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,18 +30,30 @@ export default function FriendsPage() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [f, inc, out] = await Promise.all([
+      const [f, inc, out, blk] = await Promise.all([
         getFriends(),
         getIncomingRequests(),
         getOutgoingRequests(),
+        getBlockedUsers(),
       ])
       setFriends(f ?? [])
       setIncoming(inc ?? [])
       setOutgoing(out ?? [])
+      setBlocked(blk ?? [])
     } catch (err) {
       showToast(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleUnblock(userId) {
+    try {
+      await unblockUser(userId)
+      setBlocked(prev => prev.filter(u => u.id !== userId))
+      showToast('Пользователь разблокирован', 'info')
+    } catch (err) {
+      showToast(err.message)
     }
   }
 
@@ -123,6 +137,12 @@ export default function FriendsPage() {
         >
           Исходящие {outgoing.length > 0 && <span className="badge">{outgoing.length}</span>}
         </button>
+        <button
+          className={`tab-btn ${tab === 'blocked' ? 'active' : ''}`}
+          onClick={() => setTab('blocked')}
+        >
+          Заблокированные {blocked.length > 0 && <span className="badge">{blocked.length}</span>}
+        </button>
       </div>
 
       <div className="friends-content">
@@ -149,12 +169,22 @@ export default function FriendsPage() {
                 </>
               } />
             ))
-        ) : (
+        ) : tab === 'outgoing' ? (
           outgoing.length === 0
             ? <p className="feed-status">Нет исходящих заявок</p>
             : outgoing.map(u => (
               <UserCard key={u.id} user={u} actions={
                 <span className="status-label">Ожидает ответа...</span>
+              } />
+            ))
+        ) : (
+          blocked.length === 0
+            ? <p className="feed-status">Нет заблокированных пользователей</p>
+            : blocked.map(u => (
+              <UserCard key={u.id} user={u} actions={
+                <button className="btn-secondary" onClick={() => handleUnblock(u.id)}>
+                  Разблокировать
+                </button>
               } />
             ))
         )}

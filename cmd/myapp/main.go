@@ -61,13 +61,15 @@ func main() {
 	friendshipRepo := repository.NewFriendshipRepo(db)
 	messageRepo := repository.NewMessageRepo(db)
 	emailVerificationRepo := repository.NewEmailVerificationRepo(db)
+	blockRepo := repository.NewBlockRepo(db)
 
 	userSvc := service.NewUserService(userRepo)
 	postSvc := service.NewPostService(postRepo)
 	refreshTokenSvc := service.NewRefreshTokenService(refreshTokenRepo)
 	commentSvc := service.NewCommentService(commentRepo, postSvc)
 	likeSvc := service.NewLikeService(likeRepo, postSvc)
-	friendshipSvc := service.NewFriendshipService(friendshipRepo)
+	blockSvc := service.NewBlockService(blockRepo, friendshipRepo)
+	friendshipSvc := service.NewFriendshipService(friendshipRepo, blockSvc)
 	messageSvc := service.NewMessageService(messageRepo)
 
 	// если SMTP не настроен (локальная разработка) — письма верификации просто пишутся в лог
@@ -92,6 +94,7 @@ func main() {
 	commentHandler := handler.NewCommentHandler(commentSvc)
 	likeHandler := handler.NewLikeHandler(likeSvc)
 	friendshipHandler := handler.NewFriendshipHandler(friendshipSvc)
+	blockHandler := handler.NewBlockHandler(blockSvc)
 	messageHandler := handler.NewMessageHandler(messageSvc, wsHub, cfg.AllowedOrigins)
 
 	gin.SetMode(gin.ReleaseMode)
@@ -175,6 +178,10 @@ func main() {
 		protected.GET("/friends/requests/incoming", friendshipHandler.GetIncomingRequests)
 		protected.GET("/friends/requests/outgoing", friendshipHandler.GetOutgoingRequests)
 		protected.GET("/friends/status/:id", friendshipHandler.GetStatus)
+
+		protected.POST("/blocks/:id", blockHandler.Block)
+		protected.DELETE("/blocks/:id", blockHandler.Unblock)
+		protected.GET("/blocks", blockHandler.GetBlockedUsers)
 	}
 
 	port := cfg.Port

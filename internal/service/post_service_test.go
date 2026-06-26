@@ -10,6 +10,7 @@ import (
 type mockPostRepo struct {
 	posts   []models.Post
 	friends map[[2]int]bool
+	blocked map[[2]int]bool
 }
 
 func (m *mockPostRepo) IsFriend(userA, userB int) (bool, error) {
@@ -17,6 +18,13 @@ func (m *mockPostRepo) IsFriend(userA, userB int) (bool, error) {
 		return false, nil
 	}
 	return m.friends[[2]int{userA, userB}] || m.friends[[2]int{userB, userA}], nil
+}
+
+func (m *mockPostRepo) IsBlocked(userA, userB int) (bool, error) {
+	if m.blocked == nil {
+		return false, nil
+	}
+	return m.blocked[[2]int{userA, userB}] || m.blocked[[2]int{userB, userA}], nil
 }
 
 func (m *mockPostRepo) Create(post *models.Post) error {
@@ -218,5 +226,22 @@ func TestGetPostByID_VisibilityFriends(t *testing.T) {
 	// автор видит свой пост
 	if _, err := svc.GetPostByID(post.ID, 1); err != nil {
 		t.Errorf("автор: не ожидали ошибку, получили: %v", err)
+	}
+}
+
+func TestGetPostByID_Blocked(t *testing.T) {
+	repo := &mockPostRepo{blocked: map[[2]int]bool{{1, 2}: true}}
+	svc := NewPostService(repo)
+
+	post, _ := svc.CreatePost(models.CreatePostInput{Title: "public post", Body: "body", Visibility: "public"}, 1)
+
+	// заблокированный юзер не видит даже публичный пост
+	if _, err := svc.GetPostByID(post.ID, 2); !errors.Is(err, ErrNotFound) {
+		t.Errorf("заблокированный: ожидали ErrNotFound, получили: %v", err)
+	}
+
+	// посторонний (не блокирован) видит нормально
+	if _, err := svc.GetPostByID(post.ID, 99); err != nil {
+		t.Errorf("посторонний: не ожидали ошибку, получили: %v", err)
 	}
 }

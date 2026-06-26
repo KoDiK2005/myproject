@@ -223,3 +223,18 @@ func (r *PostRepo) IsFriend(userA, userB int) (bool, error) {
 		userA, userB).Scan(&exists)
 	return exists, err
 }
+
+// IsBlocked — есть ли блокировка между двумя юзерами в любую сторону
+func (r *PostRepo) IsBlocked(userA, userB int) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+	var exists bool
+	err := r.db.QueryRowxContext(ctx,
+		`SELECT EXISTS(
+		   SELECT 1 FROM blocks
+		   WHERE (blocker_id = $1 AND blocked_id = $2)
+		      OR (blocker_id = $2 AND blocked_id = $1)
+		 )`,
+		userA, userB).Scan(&exists)
+	return exists, err
+}

@@ -14,6 +14,7 @@ type PostRepository interface {
 	Delete(id int) error
 	SearchWithCount(query string, limit, offset int) ([]models.Post, int, error)
 	IsFriend(userA, userB int) (bool, error)
+	IsBlocked(userA, userB int) (bool, error)
 }
 
 type PostService struct {
@@ -68,6 +69,15 @@ func (s *PostService) CanViewPost(postID, viewerID int) (bool, error) {
 }
 
 func (s *PostService) canView(post *models.Post, viewerID int) (bool, error) {
+	if viewerID != 0 && viewerID != post.UserID {
+		blocked, err := s.repo.IsBlocked(post.UserID, viewerID)
+		if err != nil {
+			return false, err
+		}
+		if blocked {
+			return false, nil
+		}
+	}
 	if post.Visibility != "friends" || viewerID == post.UserID {
 		return true, nil
 	}

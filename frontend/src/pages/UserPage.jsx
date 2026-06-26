@@ -9,6 +9,7 @@ import {
   rejectFriendRequest,
   removeFriend,
 } from '../api/friends'
+import { blockUser, unblockUser, getBlockedUsers } from '../api/blocks'
 import { getCurrentUserId } from '../api/auth'
 import PostCard from '../components/PostCard'
 import { useToast, ToastContainer } from '../components/Toast'
@@ -24,6 +25,7 @@ export default function UserPage() {
   const [user, setUser] = useState(null)
   const [posts, setPosts] = useState([])
   const [friendStatus, setFriendStatus] = useState(null) // FriendshipStatus
+  const [isBlocked, setIsBlocked] = useState(false)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -44,6 +46,9 @@ export default function UserPage() {
         // статус дружбы только если залогинен
         currentUserId
           ? getFriendStatus(id).then(s => setFriendStatus(s)).catch(() => {})
+          : Promise.resolve(),
+        currentUserId
+          ? getBlockedUsers().then(list => setIsBlocked(list.some(u => u.id === parseInt(id)))).catch(() => {})
           : Promise.resolve(),
       ])
       setUser(userData)
@@ -116,6 +121,34 @@ export default function UserPage() {
     }
   }
 
+  async function handleBlock() {
+    if (!confirm('Заблокировать пользователя? Это удалит дружбу и заявки между вами.')) return
+    setActionLoading(true)
+    try {
+      await blockUser(id)
+      setIsBlocked(true)
+      await refreshStatus()
+      showToast('Пользователь заблокирован', 'info')
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  async function handleUnblock() {
+    setActionLoading(true)
+    try {
+      await unblockUser(id)
+      setIsBlocked(false)
+      showToast('Пользователь разблокирован', 'info')
+    } catch (err) {
+      showToast(err.message)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   // кнопка дружбы в зависимости от статуса
   function FriendButton() {
     if (!currentUserId) return null // гость — кнопки нет
@@ -173,7 +206,16 @@ export default function UserPage() {
           )}
         </div>
         <div className="profile-actions">
-          <FriendButton />
+          {currentUserId && (
+            isBlocked
+              ? <button className="btn-secondary" onClick={handleUnblock} disabled={actionLoading}>Разблокировать</button>
+              : (
+                <>
+                  <FriendButton />
+                  <button className="btn-danger" onClick={handleBlock} disabled={actionLoading}>Заблокировать</button>
+                </>
+              )
+          )}
         </div>
       </div>
 
