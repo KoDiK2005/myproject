@@ -8,22 +8,44 @@ type LikeRepository interface {
 }
 
 type LikeService struct {
-	repo LikeRepository
+	repo        LikeRepository
+	postChecker PostAccessChecker
 }
 
-func NewLikeService(repo LikeRepository) *LikeService {
-	return &LikeService{repo: repo}
+func NewLikeService(repo LikeRepository, postChecker PostAccessChecker) *LikeService {
+	return &LikeService{repo: repo, postChecker: postChecker}
 }
 
 func (s *LikeService) Like(userID, postID int) error {
+	ok, err := s.postChecker.CanViewPost(postID, userID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrNotFound
+	}
 	return s.repo.Like(userID, postID)
 }
 
 func (s *LikeService) Unlike(userID, postID int) error {
+	ok, err := s.postChecker.CanViewPost(postID, userID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrNotFound
+	}
 	return s.repo.Unlike(userID, postID)
 }
 
-func (s *LikeService) Count(postID int) (int, error) {
+func (s *LikeService) Count(postID, viewerID int) (int, error) {
+	ok, err := s.postChecker.CanViewPost(postID, viewerID)
+	if err != nil {
+		return 0, err
+	}
+	if !ok {
+		return 0, ErrNotFound
+	}
 	return s.repo.Count(postID)
 }
 

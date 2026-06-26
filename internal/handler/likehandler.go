@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"myproject/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,10 @@ func (h *LikeHandler) LikePost(c *gin.Context) {
 	}
 	userID := c.GetInt("user_id")
 	if err := h.svc.Like(userID, postID); err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(404, gin.H{"error": "post not found"})
+			return
+		}
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -52,6 +57,10 @@ func (h *LikeHandler) UnlikePost(c *gin.Context) {
 	}
 	userID := c.GetInt("user_id")
 	if err := h.svc.Unlike(userID, postID); err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(404, gin.H{"error": "post not found"})
+			return
+		}
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
@@ -71,12 +80,17 @@ func (h *LikeHandler) GetLikeCount(c *gin.Context) {
 	if !ok {
 		return
 	}
-	count, err := h.svc.Count(postID)
+	viewerID := c.GetInt("user_id")
+	count, err := h.svc.Count(postID, viewerID)
 	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			c.JSON(404, gin.H{"error": "post not found"})
+			return
+		}
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	liked, err := h.svc.IsLiked(c.GetInt("user_id"), postID)
+	liked, err := h.svc.IsLiked(viewerID, postID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

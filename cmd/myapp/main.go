@@ -66,7 +66,7 @@ func main() {
 	postSvc := service.NewPostService(postRepo)
 	refreshTokenSvc := service.NewRefreshTokenService(refreshTokenRepo)
 	commentSvc := service.NewCommentService(commentRepo, postSvc)
-	likeSvc := service.NewLikeService(likeRepo)
+	likeSvc := service.NewLikeService(likeRepo, postSvc)
 	friendshipSvc := service.NewFriendshipService(friendshipRepo)
 	messageSvc := service.NewMessageService(messageRepo)
 
