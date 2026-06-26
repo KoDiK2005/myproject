@@ -125,7 +125,7 @@ func main() {
 	r.POST("/auth/logout", authHandler.Logout)
 	r.POST("/auth/logout-all", handler.AuthMiddleware(cfg.JWTSecret), authHandler.LogoutAll)
 	r.GET("/auth/verify-email", emailVerificationHandler.VerifyEmail)
-	r.POST("/auth/resend-verification", handler.AuthMiddleware(cfg.JWTSecret), emailVerificationHandler.ResendVerification)
+	r.POST("/auth/resend-verification", handler.AuthMiddleware(cfg.JWTSecret), handler.ResendVerificationRateLimitMiddleware(), emailVerificationHandler.ResendVerification)
 
 	// WebSocket — авторизация через query param ?token=...
 	r.GET("/ws", handler.AuthMiddleware(cfg.JWTSecret), messageHandler.WSConnect)

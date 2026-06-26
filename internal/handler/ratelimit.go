@@ -3,6 +3,7 @@ package handler
 import (
 	"myproject/internal/logger"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -86,6 +87,23 @@ func LoginRateLimitMiddleware() gin.HandlerFunc {
 		if !loginLimiter.get(ip).Allow() {
 			logger.Log.Warn().Str("ip", ip).Msg("login rate limit exceeded")
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "too many login attempts, try again later"})
+			return
+		}
+		c.Next()
+	}
+}
+
+// resendVerificationLimiter — лимит на /auth/resend-verification, по user_id (не по IP,
+// маршрут уже за AuthMiddleware), чтобы не дать заспамить почтовый ящик письмами.
+// 1 запрос в 60 секунд, burst 1.
+var resendVerificationLimiter = newIPLimiter(rate.Limit(1.0/60.0), 1)
+
+func ResendVerificationRateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.GetInt("user_id")
+		key := strconv.Itoa(userID)
+		if !resendVerificationLimiter.get(key).Allow() {
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "verification email already sent, try again later"})
 			return
 		}
 		c.Next()
