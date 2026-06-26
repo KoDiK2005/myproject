@@ -75,6 +75,11 @@ func (r *PostRepo) GetByUserIDForViewer(ownerID, viewerID, limit, offset int) ([
 		`SELECT posts.id, posts.title, posts.body, posts.user_id, posts.visibility, users.name AS author_name
 		 FROM posts JOIN users ON users.id = posts.user_id
 		 WHERE posts.user_id = $1
+		   AND ($2 = 0 OR NOT EXISTS (
+		       SELECT 1 FROM blocks
+		       WHERE (blocker_id = $1 AND blocked_id = $2)
+		          OR (blocker_id = $2 AND blocked_id = $1)
+		   ))
 		   AND (
 		     posts.visibility = 'public'
 		     OR $2 = $1
@@ -129,21 +134,28 @@ func (r *PostRepo) GetFeedWithCount(userID, limit, offset int) ([]models.Post, i
 		`SELECT posts.id, posts.title, posts.body, posts.user_id, posts.visibility, users.name AS author_name, COUNT(*) OVER() AS total
 		 FROM posts JOIN users ON users.id = posts.user_id
 		 WHERE
-		   -- свои посты видишь всегда
-		   posts.user_id = $1
-		   OR
-		   -- публичные посты всех
-		   posts.visibility = 'public'
-		   OR
-		   -- приватные посты друзей
-		   (posts.visibility = 'friends' AND posts.user_id IN (
-		       SELECT CASE
-		           WHEN requester_id = $1 THEN addressee_id
-		           ELSE requester_id
-		       END
-		       FROM friendships
-		       WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'accepted'
-		   ))
+		   NOT EXISTS (
+		       SELECT 1 FROM blocks
+		       WHERE (blocker_id = posts.user_id AND blocked_id = $1)
+		          OR (blocker_id = $1 AND blocked_id = posts.user_id)
+		   )
+		   AND (
+		     -- свои посты видишь всегда
+		     posts.user_id = $1
+		     OR
+		     -- публичные посты всех
+		     posts.visibility = 'public'
+		     OR
+		     -- приватные посты друзей
+		     (posts.visibility = 'friends' AND posts.user_id IN (
+		         SELECT CASE
+		             WHEN requester_id = $1 THEN addressee_id
+		             ELSE requester_id
+		         END
+		         FROM friendships
+		         WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'accepted'
+		     ))
+		   )
 		 ORDER BY posts.id DESC
 		 LIMIT $2 OFFSET $3`,
 		userID, limit, offset)
@@ -160,8 +172,8 @@ func (r *PostRepo) GetFeedWithCount(userID, limit, offset int) ([]models.Post, i
 	return posts, rows[0].Total, nil
 }
 
-// SearchWithCount — поиск только по публичным постам
-func (r *PostRepo) SearchWithCount(query string, limit, offset int) ([]models.Post, int, error) {
+// SearchWithCount — поиск только по публичным постам, кроме постов от/для заблокированных
+func (r *PostRepo) SearchWithCount(query string, viewerID, limit, offset int) ([]models.Post, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 	var rows []postRow
@@ -170,9 +182,14 @@ func (r *PostRepo) SearchWithCount(query string, limit, offset int) ([]models.Po
 		`SELECT posts.id, posts.title, posts.body, posts.user_id, posts.visibility, users.name AS author_name, COUNT(*) OVER() AS total
 		 FROM posts JOIN users ON users.id = posts.user_id
 		 WHERE posts.visibility = 'public' AND (posts.title ILIKE $1 OR posts.body ILIKE $1)
+		   AND ($4 = 0 OR NOT EXISTS (
+		       SELECT 1 FROM blocks
+		       WHERE (blocker_id = posts.user_id AND blocked_id = $4)
+		          OR (blocker_id = $4 AND blocked_id = posts.user_id)
+		   ))
 		 ORDER BY posts.id DESC
 		 LIMIT $2 OFFSET $3`,
-		like, limit, offset)
+		like, limit, offset, viewerID)
 	if err != nil {
 		return nil, 0, err
 	}

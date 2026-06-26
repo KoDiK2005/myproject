@@ -79,7 +79,7 @@ func (m *mockPostRepo) Delete(id int) error {
 	return nil
 }
 
-func (m *mockPostRepo) SearchWithCount(query string, limit, offset int) ([]models.Post, int, error) {
+func (m *mockPostRepo) SearchWithCount(query string, viewerID, limit, offset int) ([]models.Post, int, error) {
 	return nil, 0, nil
 }
 

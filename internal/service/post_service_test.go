@@ -89,7 +89,7 @@ func (m *mockPostRepo) Delete(id int) error {
 	return nil
 }
 
-func (m *mockPostRepo) SearchWithCount(query string, limit, offset int) ([]models.Post, int, error) {
+func (m *mockPostRepo) SearchWithCount(query string, viewerID, limit, offset int) ([]models.Post, int, error) {
 	var matched []models.Post
 	for _, p := range m.posts {
 		if containsStr(p.Title, query) || containsStr(p.Body, query) {

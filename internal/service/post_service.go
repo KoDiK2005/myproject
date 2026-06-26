@@ -12,7 +12,7 @@ type PostRepository interface {
 	GetByUserIDForViewer(ownerID, viewerID, limit, offset int) ([]models.Post, error)
 	Update(id int, title, body, visibility string) (*models.Post, error)
 	Delete(id int) error
-	SearchWithCount(query string, limit, offset int) ([]models.Post, int, error)
+	SearchWithCount(query string, viewerID, limit, offset int) ([]models.Post, int, error)
 	IsFriend(userA, userB int) (bool, error)
 	IsBlocked(userA, userB int) (bool, error)
 }
@@ -132,9 +132,9 @@ func (s *PostService) UpdatePost(id, userID int, input models.UpdatePostInput) (
 	return s.repo.Update(id, input.Title, input.Body, v)
 }
 
-func (s *PostService) SearchPosts(query string, page, limit int) (*models.PaginatedResponse, error) {
+func (s *PostService) SearchPosts(query string, viewerID, page, limit int) (*models.PaginatedResponse, error) {
 	offset := (page - 1) * limit
-	posts, total, err := s.repo.SearchWithCount(query, limit, offset)
+	posts, total, err := s.repo.SearchWithCount(query, viewerID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
