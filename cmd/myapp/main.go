@@ -151,11 +151,11 @@ func main() {
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
 		protected.POST("/users/:id/avatar", userHandler.UploadAvatar)
 
-		protected.POST("/posts", postHandler.CreatePost)
+		protected.POST("/posts", handler.RequireEmailVerified(userSvc), postHandler.CreatePost)
 		protected.PUT("/posts/:id", postHandler.UpdatePost)
 		protected.DELETE("/posts/:id", postHandler.DeletePost)
 
-		protected.POST("/posts/:id/comments", commentHandler.CreateComment)
+		protected.POST("/posts/:id/comments", handler.RequireEmailVerified(userSvc), commentHandler.CreateComment)
 		protected.DELETE("/comments/:id", commentHandler.DeleteComment)
 
 		protected.POST("/posts/:id/like", likeHandler.LikePost)
