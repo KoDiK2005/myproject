@@ -10,18 +10,20 @@ type CommentRepository interface {
 	Delete(id int) error
 }
 
-// PostAccessChecker — проверка видимости поста для пользователя (реализует *PostService)
+// PostAccessChecker — проверка видимости поста и владельца (реализует *PostService)
 type PostAccessChecker interface {
 	CanViewPost(postID, viewerID int) (bool, error)
+	GetOwnerID(postID int) (int, error)
 }
 
 type CommentService struct {
 	repo        CommentRepository
 	postChecker PostAccessChecker
+	notifier    Notifier
 }
 
-func NewCommentService(repo CommentRepository, postChecker PostAccessChecker) *CommentService {
-	return &CommentService{repo: repo, postChecker: postChecker}
+func NewCommentService(repo CommentRepository, postChecker PostAccessChecker, notifier Notifier) *CommentService {
+	return &CommentService{repo: repo, postChecker: postChecker, notifier: notifier}
 }
 
 func (s *CommentService) AddComment(postID, userID int, input models.CreateCommentInput) (*models.Comment, error) {
@@ -37,8 +39,13 @@ func (s *CommentService) AddComment(postID, userID int, input models.CreateComme
 		UserID: userID,
 		Body:   input.Body,
 	}
-	err = s.repo.Create(c)
-	return c, err
+	if err := s.repo.Create(c); err != nil {
+		return nil, err
+	}
+	if ownerID, err := s.postChecker.GetOwnerID(postID); err == nil {
+		_ = s.notifier.Notify(ownerID, userID, "comment", &postID)
+	}
+	return c, nil
 }
 
 func (s *CommentService) ListComments(postID, viewerID, page, limit int) (*models.PaginatedResponse, error) {

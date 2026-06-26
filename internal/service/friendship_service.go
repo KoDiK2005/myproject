@@ -3,7 +3,7 @@ package service
 import "myproject/internal/models"
 
 type FriendshipRepository interface {
-	SendRequest(requesterID, addresseeID int) error
+	SendRequest(requesterID, addresseeID int) (bool, error)
 	Accept(requesterID, addresseeID int) error
 	Reject(requesterID, addresseeID int) error
 	Remove(userID, friendID int) error
@@ -19,12 +19,13 @@ type BlockChecker interface {
 }
 
 type FriendshipService struct {
-	repo   FriendshipRepository
-	blocks BlockChecker
+	repo     FriendshipRepository
+	blocks   BlockChecker
+	notifier Notifier
 }
 
-func NewFriendshipService(repo FriendshipRepository, blocks BlockChecker) *FriendshipService {
-	return &FriendshipService{repo: repo, blocks: blocks}
+func NewFriendshipService(repo FriendshipRepository, blocks BlockChecker, notifier Notifier) *FriendshipService {
+	return &FriendshipService{repo: repo, blocks: blocks, notifier: notifier}
 }
 
 func (s *FriendshipService) SendRequest(requesterID, addresseeID int) error {
@@ -38,11 +39,25 @@ func (s *FriendshipService) SendRequest(requesterID, addresseeID int) error {
 	if blocked {
 		return ErrForbidden
 	}
-	return s.repo.SendRequest(requesterID, addresseeID)
+	autoAccepted, err := s.repo.SendRequest(requesterID, addresseeID)
+	if err != nil {
+		return err
+	}
+	if autoAccepted {
+		// у addresseeID уже была своя исходящая заявка к requesterID — она была принята
+		_ = s.notifier.Notify(addresseeID, requesterID, "friend_accept", nil)
+	} else {
+		_ = s.notifier.Notify(addresseeID, requesterID, "friend_request", nil)
+	}
+	return nil
 }
 
 func (s *FriendshipService) Accept(currentUserID, requesterID int) error {
-	return s.repo.Accept(requesterID, currentUserID)
+	if err := s.repo.Accept(requesterID, currentUserID); err != nil {
+		return err
+	}
+	_ = s.notifier.Notify(requesterID, currentUserID, "friend_accept", nil)
+	return nil
 }
 
 func (s *FriendshipService) Reject(currentUserID, requesterID int) error {

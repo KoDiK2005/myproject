@@ -11,6 +11,10 @@ func (denyPostChecker) CanViewPost(postID, viewerID int) (bool, error) {
 	return false, nil
 }
 
+func (denyPostChecker) GetOwnerID(postID int) (int, error) {
+	return 0, nil
+}
+
 type mockLikeRepo struct {
 	likes map[string]bool // "userID:postID"
 }
@@ -49,7 +53,7 @@ func (m *mockLikeRepo) IsLiked(userID, postID int) (bool, error) {
 
 func TestLike(t *testing.T) {
 	repo := newMockLikeRepo()
-	svc := NewLikeService(repo, allowAllPostChecker{})
+	svc := NewLikeService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	if err := svc.Like(1, 10); err != nil {
 		t.Fatalf("не ожидали ошибку: %v", err)
@@ -62,7 +66,7 @@ func TestLike(t *testing.T) {
 func TestUnlike(t *testing.T) {
 	repo := newMockLikeRepo()
 	repo.likes[likeKey(1, 10)] = true
-	svc := NewLikeService(repo, allowAllPostChecker{})
+	svc := NewLikeService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	if err := svc.Unlike(1, 10); err != nil {
 		t.Fatalf("не ожидали ошибку: %v", err)
@@ -76,7 +80,7 @@ func TestLikeCount(t *testing.T) {
 	repo := newMockLikeRepo()
 	repo.likes[likeKey(1, 10)] = true
 	repo.likes[likeKey(2, 10)] = true
-	svc := NewLikeService(repo, allowAllPostChecker{})
+	svc := NewLikeService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	count, err := svc.Count(10, 1)
 	if err != nil {
@@ -89,7 +93,7 @@ func TestLikeCount(t *testing.T) {
 
 func TestLikeIdempotent(t *testing.T) {
 	repo := newMockLikeRepo()
-	svc := NewLikeService(repo, allowAllPostChecker{})
+	svc := NewLikeService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	// лайкаем дважды — в реале ON CONFLICT DO NOTHING, мок просто перезаписывает
 	svc.Like(1, 10)
@@ -103,7 +107,7 @@ func TestLikeIdempotent(t *testing.T) {
 
 func TestIsLiked(t *testing.T) {
 	repo := newMockLikeRepo()
-	svc := NewLikeService(repo, allowAllPostChecker{})
+	svc := NewLikeService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	svc.Like(1, 10)
 
@@ -128,7 +132,7 @@ func TestIsLiked(t *testing.T) {
 
 func TestLike_NoAccessToPost(t *testing.T) {
 	repo := newMockLikeRepo()
-	svc := NewLikeService(repo, denyPostChecker{})
+	svc := NewLikeService(repo, denyPostChecker{}, noopNotifier{})
 
 	if err := svc.Like(1, 10); !errors.Is(err, ErrNotFound) {
 		t.Errorf("ожидали ErrNotFound, получили: %v", err)
@@ -140,7 +144,7 @@ func TestLike_NoAccessToPost(t *testing.T) {
 
 func TestUnlike_NoAccessToPost(t *testing.T) {
 	repo := newMockLikeRepo()
-	svc := NewLikeService(repo, denyPostChecker{})
+	svc := NewLikeService(repo, denyPostChecker{}, noopNotifier{})
 
 	if err := svc.Unlike(1, 10); !errors.Is(err, ErrNotFound) {
 		t.Errorf("ожидали ErrNotFound, получили: %v", err)
@@ -149,9 +153,25 @@ func TestUnlike_NoAccessToPost(t *testing.T) {
 
 func TestLikeCount_NoAccessToPost(t *testing.T) {
 	repo := newMockLikeRepo()
-	svc := NewLikeService(repo, denyPostChecker{})
+	svc := NewLikeService(repo, denyPostChecker{}, noopNotifier{})
 
 	if _, err := svc.Count(10, 1); !errors.Is(err, ErrNotFound) {
 		t.Errorf("ожидали ErrNotFound, получили: %v", err)
+	}
+}
+
+func TestLike_NotifiesPostOwner(t *testing.T) {
+	repo := newMockLikeRepo()
+	notifier := &recordingNotifier{}
+	svc := NewLikeService(repo, ownerPostChecker{ownerID: 7}, notifier)
+
+	if err := svc.Like(2, 10); err != nil {
+		t.Fatalf("не ожидали ошибку: %v", err)
+	}
+	if !notifier.called {
+		t.Fatal("ожидали вызов Notify")
+	}
+	if notifier.userID != 7 || notifier.actorID != 2 || notifier.typ != "like" {
+		t.Errorf("неверные параметры уведомления: userID=%d actorID=%d type=%s", notifier.userID, notifier.actorID, notifier.typ)
 	}
 }

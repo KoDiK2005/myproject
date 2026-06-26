@@ -32,48 +32,59 @@ export async function sendMessage(userId, content) {
   return data
 }
 
-// WebSocket соединение — передаём токен в query param (браузер не даёт header для WS)
-// Переподключается при разрыве с экспоненциальной задержкой, пока вызывающий не вызовет close().
-export function connectWS(onMessage) {
-  let closedByUser = false
-  let ws = null
-  let reconnectDelay = 1000
-  const maxReconnectDelay = 30000
+// Единственное WS-соединение на вкладку (бэкенд держит один Client на userID в hub —
+// второе соединение от того же юзера вытеснит первое). Сообщения/уведомления раздаются
+// всем подписчикам, поэтому чат и колокольчик уведомлений могут слушать один и тот же сокет.
+let ws = null
+let reconnectDelay = 1000
+const maxReconnectDelay = 30000
+const messageListeners = new Set()
+const notificationListeners = new Set()
 
-  function open() {
-    const token = getAccessToken()
-    if (!token) return
+function openWS() {
+  const token = getAccessToken()
+  if (!token) return
 
-    ws = new WebSocket(`${WS_URL}?token=${token}`)
+  ws = new WebSocket(`${WS_URL}?token=${token}`)
 
-    ws.onopen = () => {
-      reconnectDelay = 1000
-    }
-
-    ws.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data)
-        if (data.type === 'message' && data.payload) {
-          onMessage(data.payload)
-        }
-      } catch {}
-    }
-
-    ws.onerror = () => {} // тихо, обработку делает onclose
-
-    ws.onclose = () => {
-      if (closedByUser) return
-      setTimeout(open, reconnectDelay)
-      reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay)
-    }
+  ws.onopen = () => {
+    reconnectDelay = 1000
   }
 
-  open()
-
-  return {
-    close() {
-      closedByUser = true
-      ws?.close()
-    },
+  ws.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      if (data.type === 'message' && data.payload) {
+        messageListeners.forEach(fn => fn(data.payload))
+      } else if (data.type === 'notification' && data.payload) {
+        notificationListeners.forEach(fn => fn(data.payload))
+      }
+    } catch {}
   }
+
+  ws.onerror = () => {} // тихо, обработку делает onclose
+
+  ws.onclose = () => {
+    if (messageListeners.size === 0 && notificationListeners.size === 0) return
+    setTimeout(openWS, reconnectDelay)
+    reconnectDelay = Math.min(reconnectDelay * 2, maxReconnectDelay)
+  }
+}
+
+function ensureWSConnected() {
+  if (!ws || ws.readyState === WebSocket.CLOSED) openWS()
+}
+
+// подписаться на входящие сообщения, возвращает функцию отписки
+export function subscribeMessages(onMessage) {
+  messageListeners.add(onMessage)
+  ensureWSConnected()
+  return () => messageListeners.delete(onMessage)
+}
+
+// подписаться на уведомления (лайки/комментарии/заявки в друзья), возвращает функцию отписки
+export function subscribeNotifications(onNotification) {
+  notificationListeners.add(onNotification)
+  ensureWSConnected()
+  return () => notificationListeners.delete(onNotification)
 }

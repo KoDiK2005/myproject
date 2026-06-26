@@ -71,9 +71,51 @@ func (allowAllPostChecker) CanViewPost(postID, viewerID int) (bool, error) {
 	return true, nil
 }
 
+func (allowAllPostChecker) GetOwnerID(postID int) (int, error) {
+	return 0, nil
+}
+
+// noopNotifier — мок Notifier, который ничего не делает
+type noopNotifier struct{}
+
+func (noopNotifier) Notify(userID, actorID int, notifType string, postID *int) error {
+	return nil
+}
+
+// recordingNotifier — мок Notifier, запоминающий последний вызов
+type recordingNotifier struct {
+	called  bool
+	userID  int
+	actorID int
+	typ     string
+	postID  *int
+}
+
+func (n *recordingNotifier) Notify(userID, actorID int, notifType string, postID *int) error {
+	n.called = true
+	n.userID = userID
+	n.actorID = actorID
+	n.typ = notifType
+	n.postID = postID
+	return nil
+}
+
+// ownerPostChecker — мок PostAccessChecker с заданным владельцем поста
+type ownerPostChecker struct {
+	ownerID int
+}
+
+func (c ownerPostChecker) CanViewPost(postID, viewerID int) (bool, error) {
+	return true, nil
+}
+
+func (c ownerPostChecker) GetOwnerID(postID int) (int, error) {
+	return c.ownerID, nil
+}
+
 func TestAddComment(t *testing.T) {
 	repo := &mockCommentRepo{}
-	svc := NewCommentService(repo, allowAllPostChecker{})
+	svc := NewCommentService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	c, err := svc.AddComment(1, 2, models.CreateCommentInput{Body: "привет"})
 	if err != nil {
@@ -87,6 +129,25 @@ func TestAddComment(t *testing.T) {
 	}
 }
 
+func TestAddComment_NotifiesPostOwner(t *testing.T) {
+	repo := &mockCommentRepo{}
+	notifier := &recordingNotifier{}
+	svc := NewCommentService(repo, ownerPostChecker{ownerID: 7}, notifier)
+
+	if _, err := svc.AddComment(1, 2, models.CreateCommentInput{Body: "привет"}); err != nil {
+		t.Fatalf("не ожидали ошибку: %v", err)
+	}
+	if !notifier.called {
+		t.Fatal("ожидали вызов Notify")
+	}
+	if notifier.userID != 7 || notifier.actorID != 2 || notifier.typ != "comment" {
+		t.Errorf("неверные параметры уведомления: userID=%d actorID=%d type=%s", notifier.userID, notifier.actorID, notifier.typ)
+	}
+	if notifier.postID == nil || *notifier.postID != 1 {
+		t.Errorf("ожидали postID=1, получили %v", notifier.postID)
+	}
+}
+
 func TestListComments(t *testing.T) {
 	repo := &mockCommentRepo{
 		comments: []models.Comment{
@@ -95,7 +156,7 @@ func TestListComments(t *testing.T) {
 			{ID: 3, PostID: 99, UserID: 1, Body: "не наш пост"},
 		},
 	}
-	svc := NewCommentService(repo, allowAllPostChecker{})
+	svc := NewCommentService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	resp, err := svc.ListComments(10, 0, 1, 20)
 	if err != nil {
@@ -116,7 +177,7 @@ func TestDeleteComment_Owner(t *testing.T) {
 			{ID: 1, PostID: 1, UserID: 5, Body: "мой коммент"},
 		},
 	}
-	svc := NewCommentService(repo, allowAllPostChecker{})
+	svc := NewCommentService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	err := svc.DeleteComment(1, 5) // user 5 удаляет свой коммент
 	if err != nil {
@@ -133,7 +194,7 @@ func TestDeleteComment_NotOwner(t *testing.T) {
 			{ID: 1, PostID: 1, UserID: 5, Body: "чужой коммент"},
 		},
 	}
-	svc := NewCommentService(repo, allowAllPostChecker{})
+	svc := NewCommentService(repo, allowAllPostChecker{}, noopNotifier{})
 
 	err := svc.DeleteComment(1, 99) // user 99 лезет в чужой коммент
 	if !errors.Is(err, ErrForbidden) {
@@ -142,7 +203,7 @@ func TestDeleteComment_NotOwner(t *testing.T) {
 }
 
 func TestDeleteComment_NotFound(t *testing.T) {
-	svc := NewCommentService(&mockCommentRepo{}, allowAllPostChecker{})
+	svc := NewCommentService(&mockCommentRepo{}, allowAllPostChecker{}, noopNotifier{})
 
 	err := svc.DeleteComment(999, 1)
 	if !errors.Is(err, ErrNotFound) {

@@ -20,13 +20,15 @@ func NewFriendshipRepo(db *sqlx.DB) *FriendshipRepo {
 // местами), это считается взаимным согласием — принимаем её, а не создаём
 // вторую pending-запись (иначе UNIQUE(requester_id, addressee_id) её пропустит,
 // т.к. constraint направленный, и в GetFriends/GetStatus получим дубли).
-func (r *FriendshipRepo) SendRequest(requesterID, addresseeID int) error {
+// Возвращает autoAccepted=true если была встречная pending-заявка и она была принята,
+// вместо создания новой pending-записи.
+func (r *FriendshipRepo) SendRequest(requesterID, addresseeID int) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer tx.Rollback()
 
@@ -36,10 +38,10 @@ func (r *FriendshipRepo) SendRequest(requesterID, addresseeID int) error {
 		addresseeID, requesterID,
 	)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
-		return tx.Commit()
+		return true, tx.Commit()
 	}
 
 	if _, err := tx.ExecContext(ctx,
@@ -48,9 +50,9 @@ func (r *FriendshipRepo) SendRequest(requesterID, addresseeID int) error {
 		 ON CONFLICT (requester_id, addressee_id) DO NOTHING`,
 		requesterID, addresseeID,
 	); err != nil {
-		return err
+		return false, err
 	}
-	return tx.Commit()
+	return false, tx.Commit()
 }
 
 // Accept принимает заявку — addresseeID принимает заявку от requesterID

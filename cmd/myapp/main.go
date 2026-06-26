@@ -62,14 +62,19 @@ func main() {
 	messageRepo := repository.NewMessageRepo(db)
 	emailVerificationRepo := repository.NewEmailVerificationRepo(db)
 	blockRepo := repository.NewBlockRepo(db)
+	notificationRepo := repository.NewNotificationRepo(db)
+
+	wsHub := ws.NewHub()
+	go wsHub.Run() // запускаем горутину-диспетчер
 
 	userSvc := service.NewUserService(userRepo)
 	postSvc := service.NewPostService(postRepo)
 	refreshTokenSvc := service.NewRefreshTokenService(refreshTokenRepo)
-	commentSvc := service.NewCommentService(commentRepo, postSvc)
-	likeSvc := service.NewLikeService(likeRepo, postSvc)
+	notificationSvc := service.NewNotificationService(notificationRepo, wsHub)
+	commentSvc := service.NewCommentService(commentRepo, postSvc, notificationSvc)
+	likeSvc := service.NewLikeService(likeRepo, postSvc, notificationSvc)
 	blockSvc := service.NewBlockService(blockRepo, friendshipRepo)
-	friendshipSvc := service.NewFriendshipService(friendshipRepo, blockSvc)
+	friendshipSvc := service.NewFriendshipService(friendshipRepo, blockSvc, notificationSvc)
 	messageSvc := service.NewMessageService(messageRepo)
 
 	// если SMTP не настроен (локальная разработка) — письма верификации просто пишутся в лог
@@ -84,9 +89,6 @@ func main() {
 	}
 	emailVerifySvc := service.NewEmailVerificationService(emailVerificationRepo, userRepo, emailSender, cfg.FrontendURL)
 
-	wsHub := ws.NewHub()
-	go wsHub.Run() // запускаем горутину-диспетчер
-
 	userHandler := handler.NewUserHandler(userSvc, emailVerifySvc)
 	postHandler := handler.NewPostHandler(postSvc)
 	authHandler := handler.NewAuthHandler(userSvc, refreshTokenSvc, cfg.JWTSecret)
@@ -95,6 +97,7 @@ func main() {
 	likeHandler := handler.NewLikeHandler(likeSvc)
 	friendshipHandler := handler.NewFriendshipHandler(friendshipSvc)
 	blockHandler := handler.NewBlockHandler(blockSvc)
+	notificationHandler := handler.NewNotificationHandler(notificationSvc)
 	messageHandler := handler.NewMessageHandler(messageSvc, wsHub, cfg.AllowedOrigins)
 
 	gin.SetMode(gin.ReleaseMode)
@@ -182,6 +185,11 @@ func main() {
 		protected.POST("/blocks/:id", blockHandler.Block)
 		protected.DELETE("/blocks/:id", blockHandler.Unblock)
 		protected.GET("/blocks", blockHandler.GetBlockedUsers)
+
+		protected.GET("/notifications", notificationHandler.GetNotifications)
+		protected.GET("/notifications/unread-count", notificationHandler.GetUnreadCount)
+		protected.POST("/notifications/:id/read", notificationHandler.MarkRead)
+		protected.POST("/notifications/read-all", notificationHandler.MarkAllRead)
 	}
 
 	port := cfg.Port

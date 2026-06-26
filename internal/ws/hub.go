@@ -32,6 +32,7 @@ type Hub struct {
 	clients map[int]*Client // userID → Client
 
 	broadcast  chan *models.Message
+	notify     chan *models.Notification
 	register   chan *Client
 	unregister chan *Client
 }
@@ -40,6 +41,7 @@ func NewHub() *Hub {
 	return &Hub{
 		clients:    make(map[int]*Client),
 		broadcast:  make(chan *models.Message, 256),
+		notify:     make(chan *models.Notification, 256),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 	}
@@ -82,6 +84,25 @@ func (h *Hub) Run() {
 					h.mu.Unlock()
 				}
 			}
+
+		case n := <-h.notify:
+			data, err := json.Marshal(models.WSNotification{Type: "notification", Payload: n})
+			if err != nil {
+				continue
+			}
+			h.mu.RLock()
+			receiver, online := h.clients[n.UserID]
+			h.mu.RUnlock()
+			if online {
+				select {
+				case receiver.send <- data:
+				default:
+					h.mu.Lock()
+					delete(h.clients, n.UserID)
+					close(receiver.send)
+					h.mu.Unlock()
+				}
+			}
 		}
 	}
 }
@@ -89,6 +110,11 @@ func (h *Hub) Run() {
 // Deliver — отправить сообщение нужному юзеру если онлайн
 func (h *Hub) Deliver(msg *models.Message) {
 	h.broadcast <- msg
+}
+
+// DeliverNotification — отправить уведомление нужному юзеру если онлайн
+func (h *Hub) DeliverNotification(n *models.Notification) {
+	h.notify <- n
 }
 
 // writePump — пишет сообщения в WebSocket соединение

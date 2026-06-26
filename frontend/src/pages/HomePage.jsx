@@ -4,6 +4,7 @@ import { logout } from '../api/auth'
 import { getPosts, createPost, deletePost } from '../api/posts'
 import PostCard from '../components/PostCard'
 import { useToast, ToastContainer } from '../components/Toast'
+import NotificationBell from '../components/NotificationBell'
 import { useFriendBadge } from '../hooks/useFriendBadge'
 
 export default function HomePage() {
@@ -94,6 +95,7 @@ export default function HomePage() {
             {friendBadge > 0 && <span className="navbar-badge">{friendBadge}</span>}
           </Link>
           <Link to="/profile">Профиль</Link>
+          <NotificationBell />
           <button onClick={handleLogout} className="logout-btn">Выйти</button>
         </div>
       </nav>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getHistory, sendMessage, connectWS } from '../api/messages'
+import { getHistory, sendMessage, subscribeMessages } from '../api/messages'
 import { getUser } from '../api/users'
 import { getCurrentUserId } from '../api/auth'
 import { useToast, ToastContainer } from '../components/Toast'
@@ -18,7 +18,6 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true)
 
   const bottomRef = useRef(null)
-  const wsRef = useRef(null)
   const inputRef = useRef(null)
 
   // загружаем историю и данные собеседника
@@ -40,19 +39,16 @@ export default function ChatPage() {
     load()
   }, [partnerId])
 
-  // WebSocket — подключаемся и получаем входящие сообщения реалтайм
+  // WebSocket — подписываемся на входящие сообщения реалтайм
   useEffect(() => {
-    const ws = connectWS((msg) => {
+    const unsubscribe = subscribeMessages((msg) => {
       // принимаем только сообщения от нашего собеседника
       if (msg.sender_id === parseInt(partnerId)) {
         setMessages(prev => [...prev, msg])
       }
     })
-    wsRef.current = ws
 
-    return () => {
-      ws?.close()
-    }
+    return unsubscribe
   }, [partnerId])
 
   // скролл вниз при новых сообщениях

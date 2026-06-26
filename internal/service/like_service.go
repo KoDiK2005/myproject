@@ -10,10 +10,11 @@ type LikeRepository interface {
 type LikeService struct {
 	repo        LikeRepository
 	postChecker PostAccessChecker
+	notifier    Notifier
 }
 
-func NewLikeService(repo LikeRepository, postChecker PostAccessChecker) *LikeService {
-	return &LikeService{repo: repo, postChecker: postChecker}
+func NewLikeService(repo LikeRepository, postChecker PostAccessChecker, notifier Notifier) *LikeService {
+	return &LikeService{repo: repo, postChecker: postChecker, notifier: notifier}
 }
 
 func (s *LikeService) Like(userID, postID int) error {
@@ -24,7 +25,13 @@ func (s *LikeService) Like(userID, postID int) error {
 	if !ok {
 		return ErrNotFound
 	}
-	return s.repo.Like(userID, postID)
+	if err := s.repo.Like(userID, postID); err != nil {
+		return err
+	}
+	if ownerID, err := s.postChecker.GetOwnerID(postID); err == nil {
+		_ = s.notifier.Notify(ownerID, userID, "like", &postID)
+	}
+	return nil
 }
 
 func (s *LikeService) Unlike(userID, postID int) error {

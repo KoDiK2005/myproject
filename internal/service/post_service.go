@@ -68,6 +68,16 @@ func (s *PostService) CanViewPost(postID, viewerID int) (bool, error) {
 	return s.canView(post, viewerID)
 }
 
+// GetOwnerID — автор поста; используется другими сервисами (лайки, комментарии)
+// для адресации уведомлений.
+func (s *PostService) GetOwnerID(postID int) (int, error) {
+	post, err := s.repo.GetByID(postID)
+	if err != nil || post == nil {
+		return 0, ErrNotFound
+	}
+	return post.UserID, nil
+}
+
 func (s *PostService) canView(post *models.Post, viewerID int) (bool, error) {
 	if viewerID != 0 && viewerID != post.UserID {
 		blocked, err := s.repo.IsBlocked(post.UserID, viewerID)
