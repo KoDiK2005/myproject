@@ -158,7 +158,7 @@ func main() {
 		protected.POST("/posts/:id/comments", handler.RequireEmailVerified(userSvc), commentHandler.CreateComment)
 		protected.DELETE("/comments/:id", commentHandler.DeleteComment)
 
-		protected.POST("/posts/:id/like", likeHandler.LikePost)
+		protected.POST("/posts/:id/like", handler.RequireEmailVerified(userSvc), likeHandler.LikePost)
 		protected.DELETE("/posts/:id/like", likeHandler.UnlikePost)
 
 		// мессенджер
