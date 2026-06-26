@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { getUser } from '../api/users'
 import { getPostsByUser } from '../api/posts'
 import {
@@ -13,6 +13,7 @@ import { blockUser, unblockUser, getBlockedUsers } from '../api/blocks'
 import { getCurrentUserId } from '../api/auth'
 import PostCard from '../components/PostCard'
 import { useToast, ToastContainer } from '../components/Toast'
+import Navbar from '../components/Navbar'
 
 export default function UserPage() {
   const { id } = useParams()
@@ -186,10 +187,7 @@ export default function UserPage() {
     <div className="profile-page">
       <ToastContainer toasts={toasts} />
 
-      <nav className="navbar">
-        <button onClick={() => navigate(-1)} className="back-btn">← Назад</button>
-        <Link to="/" className="navbar-brand">MyProject</Link>
-      </nav>
+      <Navbar onBack={() => navigate(-1)} title="MyProject" titleTo="/" />
 
       <div className="profile-card">
         <div className="profile-avatar">

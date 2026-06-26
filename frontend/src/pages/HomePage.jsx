@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { logout } from '../api/auth'
 import { getPosts, createPost, deletePost } from '../api/posts'
 import PostCard from '../components/PostCard'
 import { useToast, ToastContainer } from '../components/Toast'
 import NotificationBell from '../components/NotificationBell'
+import Navbar from '../components/Navbar'
 import { useFriendBadge } from '../hooks/useFriendBadge'
 
 export default function HomePage() {
@@ -85,20 +86,19 @@ export default function HomePage() {
     <div className="home-page">
       <ToastContainer toasts={toasts} />
 
-      <nav className="navbar">
-        <span className="navbar-brand">MyProject</span>
-        <div className="navbar-links">
-          <Link to="/people">Люди</Link>
-          <Link to="/messages">Сообщения</Link>
-          <Link to="/friends" className="navbar-badge-link">
-            Друзья
-            {friendBadge > 0 && <span className="navbar-badge">{friendBadge}</span>}
-          </Link>
-          <Link to="/profile">Профиль</Link>
+      <Navbar
+        title="MyProject"
+        links={[
+          { to: '/people', label: 'Люди' },
+          { to: '/messages', label: 'Сообщения' },
+          { to: '/friends', label: 'Друзья', badge: friendBadge },
+          { to: '/profile', label: 'Профиль' },
+        ]}
+        right={<>
           <NotificationBell />
           <button onClick={handleLogout} className="logout-btn">Выйти</button>
-        </div>
-      </nav>
+        </>}
+      />
 
       <div className="feed">
         <form onSubmit={handleSearch} className="search-form">

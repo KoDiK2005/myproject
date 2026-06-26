@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getConversations } from '../api/messages'
 import { useToast, ToastContainer } from '../components/Toast'
+import Navbar from '../components/Navbar'
 
 const BASE_IMG = 'http://localhost:8080'
 
@@ -38,10 +39,7 @@ export default function MessagesPage() {
     <div className="messages-page">
       <ToastContainer toasts={toasts} />
 
-      <nav className="navbar">
-        <button onClick={() => navigate('/')} className="back-btn">← Назад</button>
-        <span className="navbar-brand">Сообщения</span>
-      </nav>
+      <Navbar onBack={() => navigate('/')} title="Сообщения" />
 
       <div className="convs-list">
         {loading && <p className="feed-status">Загружаем...</p>}

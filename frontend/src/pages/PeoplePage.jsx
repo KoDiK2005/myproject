@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { apiFetch } from '../api/auth'
 import { useToast, ToastContainer } from '../components/Toast'
 import { sendFriendRequest, getFriendStatus } from '../api/friends'
+import Navbar from '../components/Navbar'
 
 const BASE = 'http://localhost:8080/api/v1'
 
@@ -93,11 +94,11 @@ export default function PeoplePage() {
     <div className="people-page">
       <ToastContainer toasts={toasts} />
 
-      <nav className="navbar">
-        <button onClick={() => navigate('/')} className="back-btn">← Назад</button>
-        <span className="navbar-brand">Поиск людей</span>
-        <Link to="/friends" className="navbar-link">Друзья</Link>
-      </nav>
+      <Navbar
+        onBack={() => navigate('/')}
+        title="Поиск людей"
+        links={[{ to: '/friends', label: 'Друзья' }]}
+      />
 
       <div className="people-content">
         <form onSubmit={handleSearch} className="people-search-form">

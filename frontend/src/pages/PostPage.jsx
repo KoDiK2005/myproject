@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { getCurrentUserId } from '../api/auth'
 import { getComments, createComment, deleteComment } from '../api/comments'
 import { getLikeCount, likePost, unlikePost } from '../api/likes'
 import { getPost, updatePost } from '../api/posts'
 import { useToast, ToastContainer } from '../components/Toast'
+import Navbar from '../components/Navbar'
 
 export default function PostPage() {
   const { id } = useParams()
@@ -137,10 +138,7 @@ export default function PostPage() {
     <div className="post-page">
       <ToastContainer toasts={toasts} />
 
-      <nav className="navbar">
-        <button className="back-btn" onClick={() => navigate(-1)}>← Назад</button>
-        <Link to="/profile" style={{ color: '#aaa', textDecoration: 'none', fontSize: '0.9rem' }}>Профиль</Link>
-      </nav>
+      <Navbar onBack={() => navigate(-1)} links={[{ to: '/profile', label: 'Профиль' }]} />
 
       <div className="post-full">
         {editing ? (

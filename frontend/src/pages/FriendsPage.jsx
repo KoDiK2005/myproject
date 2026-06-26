@@ -10,6 +10,7 @@ import {
 } from '../api/friends'
 import { getBlockedUsers, unblockUser } from '../api/blocks'
 import { useToast, ToastContainer } from '../components/Toast'
+import Navbar from '../components/Navbar'
 
 // вкладки: friends | incoming | outgoing | blocked
 export default function FriendsPage() {
@@ -113,10 +114,7 @@ export default function FriendsPage() {
     <div className="friends-page">
       <ToastContainer toasts={toasts} />
 
-      <nav className="navbar">
-        <button onClick={() => navigate('/')} className="back-btn">← Назад</button>
-        <span className="navbar-brand">Друзья</span>
-      </nav>
+      <Navbar onBack={() => navigate('/')} title="Друзья" />
 
       <div className="friends-tabs">
         <button
